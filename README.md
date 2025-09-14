@@ -1,185 +1,81 @@
 # 🎓 Schulmanager Online Integration for Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/wunsch/schulmanager-online-hass.svg)](https://github.com/wunsch/schulmanager-online-hass/releases)
-[![License](https://img.shields.io/github/license/wunsch/schulmanager-online-hass.svg)](LICENSE)
-
-A comprehensive Home Assistant integration for **[Schulmanager Online](https://login.schulmanager-online.de/)**, providing real-time access to student schedules, homework assignments, and school information with advanced custom Lovelace cards.
+A comprehensive Home Assistant integration for **[Schulmanager Online](https://login.schulmanager-online.de/)** with extended sensors and calendar integration. A powerful custom UI card will be available in the future.
 
 ## ✨ Features
 
-### 📊 **8 Comprehensive Sensors per Student**
-- **Current Lesson** - Shows the currently active lesson with real-time updates
-- **Next Lesson** - Displays the upcoming lesson with countdown timer
-- **Today's Lessons** - Count and details of today's classes
-- **Today's Changes** - Substitutions and cancellations for today
-- **Next School Day** - Information about the next school day (skips weekends)
-- **This Week** - Complete schedule overview for current week
-- **Next Week** - Schedule preview for upcoming week
-- **Changes Detected** - Real-time detection of schedule modifications
+### 📊 Sensors (8 per child)
+- **Current Lesson**: Shows the currently active lesson
+- **Next Lesson**: Shows the next upcoming lesson
+- **Today's Lessons**: Count and details of today's lessons
+- **Today's Changes**: Substitutions and changes for today
+- **Next School Day**: Lessons for the next school day (skips weekends)
+- **This Week**: Complete overview of the current school week
+- **Next Week**: Complete overview of the next school week
+- **Changes Detected**: Diff sensor with before/after comparison
 
-### 📅 **Calendar Integration**
-- **Schedule Calendar** - All lessons as calendar events ⚠️ *Times are estimates*
-- **Homework Calendar** - Homework assignments with due dates
-- **Smart Event Details** - Teacher, room, and substitution information
+### 📅 Calendar (per child)
+- **Schedule Calendar**: All lessons as calendar entries ⚠️ *Times are estimates*
+- **Homework Calendar**: Homework with due dates (optional)
+- **Substitution Plan**: Automatic marking of substitutions
 
-> **⚠️ Important Limitation**: The Schulmanager Online API only provides class hour numbers (e.g., "5th hour") but **not actual start/end times**. Calendar events use **estimated default times** based on typical German school schedules. Your school's actual lesson times may vary significantly.
+> **⚠️ Important Note**: The Schulmanager Online API only provides class hour numbers (e.g., "5th hour") but **not actual start/end times**. The calendar uses **estimated default times** based on typical German school schedules (1st hour: 08:00-08:45, 5th hour: 11:40-12:25, etc.). Actual lesson times may vary by school.
 
-### 🎨 **Advanced Custom Lovelace Card**
-- **4 Different Views**: Weekly Matrix, Weekly List, Daily List, Compact
-- **Responsive Design** - Automatically adapts to Home Assistant's grid system
-- **Real-time Updates** - Automatic refresh with schedule changes
-- **Multi-student Support** - Family mode for multiple children
-- **Dynamic Text Sizing** - Full names ↔ abbreviations based on available space
-- **Smart Column Detection** - Uses ResizeObserver for perfect grid integration
+### 🎨 Custom UI Card (Future Feature)
+- **Coming Soon**: A powerful custom card with multiple view modes
+- **Planned Features**: Matrix, Week List, Day List, Current/Next Lesson views
+- **Multi-Student Support**: Will automatically detect all students
+- **Responsive Design**: Will be optimized for desktop and mobile
+- **Fully Configurable**: Will be customizable via UI editor
 
-### 🌍 **Multi-language Support**
-Supports 12 languages: English, German, French, Spanish, Italian, Dutch, Portuguese, Polish, Russian, Swedish, Danish
+### ⚙️ Configurable Options
+- **Time Period**: 1-4 weeks ahead retrievable
+- **Homework**: Optional enable/disable
+- **Grades**: Optional enable/disable (planned)
 
-### 👨‍👩‍👧‍👦 **Multi-Child Support ("Family Mode")**
+### 👨‍👩‍👧‍👦 Multi-Child Support ("Family Mode")
 - **Automatic Detection** of all children in the account
 - **Separate Entities** per child (sensors + calendar)
 - **Shared Configuration** but individual data per child
-- **Family Dashboard** with all children or separate dashboards per child
+- **Family Calendar** with all children or separate calendars per child
 
 ## 🚀 Installation
 
 ### HACS (Recommended)
-
-1. Open **HACS** in Home Assistant
-2. Go to **Integrations**
-3. Click **Custom Repositories**
-4. Add repository: `https://github.com/wunsch/schulmanager-online-hass`
-5. Category: **Integration**
-6. Click **Download**
-7. **Restart Home Assistant**
+1. **HACS** → **Integrations** → **⋮** → **Custom Repositories**
+2. Add repository: `https://github.com/wunsch/schulmanager-online-hass`
+3. Category: **Integration**
+4. Install **Schulmanager Online**
+5. **Restart** Home Assistant
 
 ### Manual Installation
-
-1. Download the latest release from [GitHub](https://github.com/wunsch/schulmanager-online-hass/releases)
-2. Extract to `custom_components/schulmanager_online/`
-3. Restart Home Assistant
+1. Copy `custom_components/schulmanager_online/` to `<config>/custom_components/`
+2. Restart Home Assistant
 
 ## ⚙️ Configuration
 
-### Initial Setup
+### Via UI (Recommended)
+1. **Settings** → **Devices & Services** → **Add Integration**
+2. Search for **"Schulmanager Online"**
+3. Enter **Email** and **Password**
+4. Configure **Options** (weeks, homework, etc.)
+5. **Done!** 🎉
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **"+ ADD INTEGRATION"**
-3. Search for **"Schulmanager Online"**
-4. Enter your credentials:
-   - **Email/Username**: Your Schulmanager Online login
-   - **Password**: Your password
-5. Configure options:
-   - **Weeks to look ahead**: 1-4 weeks (default: 2)
-   - **Include homework calendar**: Enable homework tracking
-   - **Include grades**: Experimental grades support
+## 📱 Usage
 
-### Configuration Options
+### Sensors in Dashboards
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `lookahead_weeks` | How many weeks ahead to fetch | 2 |
-| `include_homework` | Enable homework calendar | `true` |
-| `include_grades` | Enable grades (experimental) | `false` |
-
-## 📱 Usage Examples
-
-### Custom Schedule Card - 4 Different Views
-
-The integration includes a powerful custom card with multiple view modes:
-
-**1. Weekly Matrix View (Traditional Schedule Grid)**
+#### Individual Sensors
 ```yaml
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: weekly_matrix
-title: "Weekly Schedule"
-show_header: true
-show_breaks: true
-highlight_current: true
-highlight_changes: true
-```
-
-**2. Weekly List View (Chronological List)**
-```yaml
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: weekly_list
-title: "This Week's Lessons"
-show_header: true
-```
-
-**3. Daily List View (Today's Focus)**
-```yaml
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: daily_list
-title: "Today's Schedule"
-highlight_current: true
-```
-
-**4. Compact View (Mobile-Optimized)**
-```yaml
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: compact
-title: "Current Status"
-```
-
-### Advanced Card Configuration
-
-```yaml
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: weekly_matrix
-title: "Student's Schedule"
-show_header: true
-show_breaks: true
-color_scheme: "default"                    # default, dark, colorful
-highlight_current: true                    # Highlight current lesson
-highlight_changes: true                    # Highlight substitutions
-max_days: 7                               # Maximum days to show
-time_format: "24h"                        # 24h or 12h
-language: "de"                            # de, en, fr, etc.
-```
-
-### Custom Styling
-
-```yaml
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: weekly_matrix
-style: |
-  ha-card {
-    --primary-color: #1976d2;
-    --accent-color: #ff9800;
-    --card-background-color: #fafafa;
-  }
-  .current-lesson {
-    background-color: var(--accent-color) !important;
-    color: white !important;
-  }
-  .substitution {
-    border-left: 4px solid #f44336 !important;
-  }
-```
-
-### Basic Dashboard Card
-
-```yaml
-type: entities
-title: "School Schedule"
-entities:
-  - entity: sensor.student_name_current_lesson
-    name: "Current Lesson"
-  - entity: sensor.student_name_next_lesson
-    name: "Next Lesson"
-  - entity: sensor.student_name_today_changes
-    name: "Today's Changes"
+type: entity
+entity: sensor.current_lesson_name_of_child
+name: "Marc's Current Lesson"
+icon: mdi:play-circle-outline
 ```
 
 ### Calendar Integration
+
+The calendars automatically appear in the Home Assistant calendar view and can be used in calendar cards:
 
 #### Basic Calendar Cards
 
@@ -187,8 +83,8 @@ entities:
 # Basic calendar view
 type: calendar
 entities:
-  - calendar.lessons_student_name
-  - calendar.homework_student_name
+  - calendar.lessons_name_of_child
+  - calendar.homework_name_of_child
 title: "School Calendar"
 ```
 
@@ -198,41 +94,37 @@ title: "School Calendar"
 # Monthly view
 type: calendar
 entities:
-  - calendar.lessons_student_name
+  - calendar.lessons_name_of_child
 title: "Monthly Schedule"
 initial_view: dayGridMonth
 
 # Weekly view
 type: calendar
 entities:
-  - calendar.lessons_student_name
+  - calendar.lessons_name_of_child
 title: "Weekly Schedule"
 initial_view: listWeek
 
 # Daily view
 type: calendar
 entities:
-  - calendar.lessons_student_name
+  - calendar.lessons_name_of_child
 title: "Today's Schedule"
 initial_view: listDay
 ```
 
-#### ⏰ Calendar Time Estimates
-
-Since the Schulmanager Online API only provides class hour numbers without actual times, the integration uses these **default time estimates**:
-
-| Class Hour | Estimated Time | Break After |
-|------------|----------------|-------------|
-| 1st hour  | 08:00 - 08:45  | 5 min       |
-| 2nd hour  | 08:50 - 09:35  | 20 min      |
-| 3rd hour  | 09:55 - 10:40  | 5 min       |
-| 4th hour  | 10:45 - 11:30  | 10 min      |
-| 5th hour  | 11:40 - 12:25  | 5 min       |
-| 6th hour  | 12:30 - 13:15  | 5 min       |
-| 7th hour  | 13:20 - 14:05  | 5 min       |
-| 8th hour  | 14:10 - 14:55  | -           |
-
-> **🏫 School-Specific Times**: These are estimates based on common German school schedules. Your school may have different lesson and break durations. The integration cannot determine actual times from the API data.
+> **📝 Calendar Time Estimates**: Since the Schulmanager API doesn't provide actual lesson start/end times, the calendar uses these **estimated default times**:
+> - 1st hour: 08:00-08:45
+> - 2nd hour: 08:50-09:35  
+> - 3rd hour: 09:55-10:40
+> - 4th hour: 10:45-11:30
+> - 5th hour: 11:40-12:25
+> - 6th hour: 12:30-13:15
+> - 7th hour: 13:20-14:05
+> - 8th hour: 14:10-14:55
+> - And so on...
+>
+> **Your school's actual times may differ!** These are estimates based on typical German school schedules.
 
 #### Complete School Dashboard
 
@@ -240,127 +132,165 @@ Since the Schulmanager Online API only provides class hour numbers without actua
 type: vertical-stack
 title: "School Dashboard"
 cards:
-  # Current Status (Compact)
-  - type: custom:schulmanager-schedule-card
-    entity: sensor.current_lesson_student_name
-    view: compact
-    
-  # Today's Schedule (Daily List)
-  - type: custom:schulmanager-schedule-card
-    entity: sensor.current_lesson_student_name
-    view: daily_list
-    title: "Today's Lessons"
+  # Current Status
+  - type: entities
+    entities:
+      - entity: sensor.current_lesson_name_of_child
+        name: "Current Lesson"
+      - entity: sensor.next_lesson_name_of_child
+        name: "Next Lesson"
     
   # Calendar Integration
   - type: calendar
     entities:
-      - calendar.lessons_student_name
-      - calendar.homework_student_name
+      - calendar.lessons_name_of_child
+      - calendar.homework_name_of_child
     initial_view: listWeek
     
   # Quick Stats
   - type: glance
     entities:
-      - entity: sensor.lessons_today_student_name
+      - entity: sensor.lessons_today_name_of_child
         name: "Today"
-      - entity: sensor.changes_detected_student_name
+      - entity: sensor.changes_detected_name_of_child
         name: "Changes"
-      - entity: sensor.homework_due_today_student_name
+      - entity: sensor.homework_due_today_name_of_child
         name: "Homework"
 ```
 
-### Custom Card Configuration Options
-
-| Option | Description | Default | Values |
-|--------|-------------|---------|---------|
-| `view` | Display mode | `weekly_matrix` | `weekly_matrix`, `weekly_list`, `daily_list`, `compact` |
-| `show_header` | Show card header | `true` | `true`, `false` |
-| `show_breaks` | Show break times | `true` | `true`, `false` |
-| `highlight_current` | Highlight current lesson | `true` | `true`, `false` |
-| `highlight_changes` | Highlight substitutions | `true` | `true`, `false` |
-| `color_scheme` | Color theme | `default` | `default`, `dark`, `colorful` |
-| `time_format` | Time display format | `24h` | `24h`, `12h` |
-| `language` | Interface language | `de` | `de`, `en`, `fr`, `es`, etc. |
-| `max_days` | Maximum days to display | `7` | `1-7` |
-
-### Mobile-Optimized Configuration
-
-```yaml
-# Automatically adapts to mobile screens
-type: custom:schulmanager-schedule-card
-entity: sensor.current_lesson_student_name
-view: daily_list  # Better for mobile
-title: "Today's Schedule"
-show_header: false  # Save space on mobile
-```
-
-### Automation Examples
+### Automations
 
 ```yaml
 # Example: Notification for substitutions
 automation:
-  - alias: "School - Substitution Alert"
+  - alias: "Substitution Detected"
     trigger:
       - platform: state
-        entity_id: sensor.student_name_changes_detected
-        to: "1 change detected"
+        entity_id: sensor.name_of_child_changes_detected
+        to: 
+          - "1 change detected"
     action:
       - service: notify.mobile_app
         data:
-          title: "📚 Schedule Change"
-          message: "New substitution detected for {{ trigger.to_state.attributes.student_name }}"
+          title: "Schedule Change"
+          message: >
+            {{ states('sensor.name_of_child_changes_detected') }}
+            Details: {{ state_attr('sensor.name_of_child_changes_detected', 'changes')[0]['description'] }}
 
 # Example: Reminder before current lesson
 automation:
   - alias: "Current Lesson Reminder"
     trigger:
       - platform: state
-        entity_id: sensor.student_name_current_lesson
+        entity_id: sensor.name_of_child_current_lesson
         from: "No current lesson"
     action:
       - service: notify.mobile_app
         data:
           message: >
-            Student now has {{ states('sensor.student_name_current_lesson') }}
+            Marc now has {{ states('sensor.name_of_child_current_lesson') }}
 ```
 
-### Template Sensors
+## 🎨 Custom Card (Coming Soon)
 
+### Future Development
+A powerful custom schedule card is currently in development and will include:
+
+- **Multiple View Modes**: Weekly matrix, weekly list, daily list, and compact views
+- **Interactive Interface**: Easy switching between different display modes
+- **Multi-Student Support**: Automatic detection and display of all students
+- **Responsive Design**: Optimized for both desktop and mobile devices
+- **Customizable Themes**: Multiple color schemes and styling options
+- **Advanced Configuration**: Extensive customization options via UI editor
+
+Stay tuned for updates on this exciting feature!
+
+## 🔧 Advanced Configuration
+
+### Adjust Options
+1. **Settings** → **Devices & Services** → **Schulmanager Online**
+2. Click **Configure**
+3. Adjust options:
+   - **Weeks Ahead**: 1-4 weeks
+   - **Homework**: Enable/Disable
+   - **Grades**: Enable/Disable (experimental)
+
+### YAML Configuration
 ```yaml
-template:
-  - sensor:
-      - name: "Next Lesson Countdown"
-        state: >
-          {% set next_lesson = states('sensor.student_name_next_lesson') %}
-          {% set minutes = state_attr('sensor.student_name_next_lesson', 'minutes_until') %}
-          {% if minutes is not none and minutes > 0 %}
-            {{ next_lesson }} in {{ minutes }} minutes
-          {% else %}
-            {{ next_lesson }}
-          {% endif %}
+# configuration.yaml
+schulmanager_online:
+  email: "your@email.com"
+  password: "YourPassword"
+  weeks_ahead: 2
+  include_homework: true
+  include_grades: false
 ```
 
-## 🏗️ Architecture
+## 🧪 Development & Testing
 
-### Data Flow
+### Docker Compose Setup
+```bash
+cd test-scripts
+make dev        # Complete development setup
+make start      # Start all services
+make logs       # View logs
+make test       # Run API tests
 ```
-Schulmanager Online API → Authentication (PBKDF2-SHA512) → JWT Token → Data Coordinator → Sensors/Calendar → UI
+
+### Available Services
+- **Home Assistant**: http://localhost:8123
+- **Code Server**: http://localhost:8080 (password: schulmanager123)
+- **Grafana**: http://localhost:3000 (admin/schulmanager123)
+- **Portainer**: http://localhost:9000
+- **pgAdmin**: http://localhost:5050
+
+### API Testing
+```bash
+# Quick test
+make test-quick
+
+# Full API test with structured output
+make test
+
+# Development environment
+make dev-setup
+source venv/bin/activate
+python standalone_api_test.py
 ```
-
-### Update Intervals
-- **Current/Next Lesson**: Every 5 minutes during school hours
-- **Daily Schedule**: Every 15 minutes
-- **Weekly Schedule**: Every hour
-- **Change Detection**: Real-time comparison
-
-## 🔐 Security & Privacy
-
-- **Local Processing**: All data processing happens locally in Home Assistant
-- **Secure Authentication**: Uses PBKDF2-SHA512 hashing with 99,999 iterations
-- **Token Management**: Automatic JWT token renewal
-- **No Data Storage**: No sensitive data is permanently stored
 
 ## 🐛 Troubleshooting
+
+### Common Issues
+
+#### Login Errors
+- **Check Credentials**: Email and password correct?
+- **Account Type**: Use parent account (not student account)
+- **Two-Factor Authentication**: Currently not supported
+
+#### No Data
+- **Students Present**: Are children registered in the account?
+- **Permissions**: Does the account have access to schedules?
+- **School Holidays**: Often no data available during holidays
+
+#### Calendar Times Don't Match School Schedule
+- **Expected Behavior**: Calendar times are estimates only
+- **Root Cause**: Schulmanager API doesn't provide actual lesson times
+- **Solution**: Times are based on typical German school schedules and may not match your specific school
+
+#### Integration Won't Load
+- **Restart Home Assistant** after installation
+- **Check Logs**: `Settings → System → Logs`
+- **Update HACS** if installed via HACS
+
+### Debug Logs
+```yaml
+# configuration.yaml
+logger:
+  logs:
+    custom_components.schulmanager_online: debug
+```
+
+## 🔧 Troubleshooting
 
 ### Custom Card Issues
 
@@ -369,20 +299,56 @@ Schulmanager Online API → Authentication (PBKDF2-SHA512) → JWT Token → Dat
 - Custom cards show "Configuration error" in dashboard
 - Browser console shows: `Failed to resolve module specifier "lit"`
 
+**Root Cause:**
+The custom card JavaScript file contains ES6 module imports that aren't compatible with Home Assistant's frontend loading mechanism.
+
 **Solution:**
 1. **Check resource configuration** in `configuration.yaml`:
    ```yaml
    lovelace:
      resources:
-       - url: /hacsfiles/schulmanager_online/schulmanager-schedule-card.js
+       - url: /local/schulmanager-schedule-card.js
          type: module
    ```
 
-2. **Restart Home Assistant** to reload the custom card
-3. **Clear browser cache** (Ctrl+F5 or Cmd+Shift+R)
-4. **Verify file loads** at: `http://your-ha:8123/hacsfiles/schulmanager_online/schulmanager-schedule-card.js`
+2. **Restart Home Assistant** to reload the custom card:
+   ```bash
+   # If using Docker
+   docker restart <container-name>
+   
+   # Or via Home Assistant UI
+   Settings → System → Restart
+   ```
 
-**Expected:** File should start with `class SchulmanagerScheduleCard extends HTMLElement`
+3. **Clear browser cache** (Ctrl+F5 or Cmd+Shift+R)
+
+4. **Verify file is loaded** by navigating to:
+   ```
+   http://your-ha-instance:8123/local/schulmanager-schedule-card.js
+   ```
+
+**Expected Result:**
+- File should start with `class SchulmanagerScheduleCard extends HTMLElement`
+- No "lit" import statements should be present
+- File size should be ~8-9KB
+
+#### Problem: Cards registered but not displaying data
+**Symptoms:**
+- Cards appear but show "No student data available"
+- Integration is loaded and sensors exist
+
+**Solution:**
+1. **Check sensor entities** exist:
+   ```
+   sensor.{student_name}_current_lesson
+   sensor.{student_name}_next_lesson
+   ```
+
+2. **Verify entity naming** matches card expectations:
+   - Student names are converted to lowercase with underscores
+   - Special characters are removed
+
+3. **Check integration status** in Settings → Devices & Services
 
 ### API Issues
 
@@ -394,53 +360,68 @@ ERROR: Failed to get letters: API call failed: 400
 ```
 
 **Possible Causes:**
-- Incorrect API parameters or date format
-- Changed Schulmanager Online API structure
-- Missing permissions for student account
-- Date range too far in future/past
+1. **Incorrect API parameters** - Student ID or date format issues
+2. **Changed API structure** - Schulmanager Online updated their API
+3. **Missing permissions** - Student account lacks access to certain data
+4. **Date range issues** - Requesting data too far in the future/past
 
 **Debug Steps:**
-1. Enable debug logging (see below)
-2. Check API request payload in logs
-3. Verify authentication works (status 200)
-4. Test with different date ranges
+1. **Enable debug logging**:
+   ```yaml
+   logger:
+     logs:
+       custom_components.schulmanager_online: debug
+   ```
+
+2. **Check API request payload** in logs:
+   ```
+   Schedule request payload: [{'moduleName': 'schedules', 'endpointName': 'get-actual-lessons', ...}]
+   ```
+
+3. **Verify authentication** works (login should show status 200)
+
+4. **Test with different date ranges** or parameters
 
 #### Problem: 401 Authentication Errors
+**Symptoms:**
+```
+Exception: Login failed: 401
+```
+
 **Solutions:**
-- Verify credentials in integration configuration
-- Check for account lockout (too many failed attempts)
-- Verify account type (parent vs. student account)
-- Check Schulmanager Online service status
+1. **Verify credentials** in integration configuration
+2. **Check for account lockout** - too many failed attempts
+3. **Verify account type** - parent vs. student account differences
+4. **Check Schulmanager Online service status**
 
-### Common Issues
+### Docker Development Issues
 
-**Authentication Failed**
-- Verify your Schulmanager Online credentials
-- Check if your account has student access
-- Ensure 2FA is disabled for the integration account
+#### Problem: File changes not reflected in container
+**Symptoms:**
+- Updated JavaScript files not loading
+- Old file sizes in logs (6902 bytes instead of ~8700 bytes)
 
-**No Students Found**
-- Confirm your account is linked to student profiles
-- Check if you're using a parent or student account
+**Solution:**
+1. **Check volume mounts** in docker-compose.yml:
+   ```yaml
+   volumes:
+     - ../custom_components:/config/custom_components
+   ```
 
-**Sensors Show "Unavailable"**
-- Check Home Assistant logs for API errors
-- Verify internet connection
-- Restart the integration
+2. **Restart container** to pick up changes:
+   ```bash
+   docker restart schulmanager-ha-test
+   # or
+   docker compose restart homeassistant
+   ```
 
-**Calendar Times Don't Match My School**
-- This is expected behavior - times are estimates only
-- Schulmanager API doesn't provide actual lesson start/end times
-- Integration uses default German school schedule times
-- Your school's actual times may be completely different
+3. **Verify file permissions** and ownership
 
-**Custom Cards Not Displaying Data**
-- Check sensor entities exist: `sensor.{student_name}_current_lesson`
-- Verify entity naming (lowercase with underscores)
-- Check integration status in Settings → Devices & Services
+4. **Clear browser cache** after container restart
 
-### Debug Logging
+### General Debugging
 
+#### Enable Comprehensive Logging
 ```yaml
 # configuration.yaml
 logger:
@@ -451,47 +432,42 @@ logger:
     homeassistant.components.calendar: info
 ```
 
-### Browser Developer Tools
+#### Check Integration Health
+1. **Settings** → **Devices & Services** → **Schulmanager Online**
+2. Look for error messages or warnings
+3. Check entity states in **Developer Tools** → **States**
+
+#### Browser Developer Tools
 1. **Open DevTools** (F12)
 2. **Console tab** - Look for JavaScript errors
-3. **Network tab** - Check resource loading (200 status)
-4. **Clear cache** if needed
+3. **Network tab** - Check if resources are loading (200 status)
+4. **Application tab** → **Local Storage** - Clear if needed
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome! 
 
-### Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/wunsch/schulmanager-online-hass.git
-
-# Install development dependencies
-cd test-scripts
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Run tests
-python test_api_complete.py
-```
+1. **Fork** the repository
+2. **Create Feature Branch** (`git checkout -b feature/AmazingFeature`)
+3. **Commit Changes** (`git commit -m 'Add some AmazingFeature'`)
+4. **Push Branch** (`git push origin feature/AmazingFeature`)
+5. **Open Pull Request**
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See `LICENSE` for details.
 
 ## 🙏 Acknowledgments
 
-- **[Schulmanager Online](https://login.schulmanager-online.de/)** for providing the educational platform and API access
-- **[Home Assistant](https://www.home-assistant.io/)** community for the excellent integration framework
-- All contributors and testers who helped improve this integration
+- **[Schulmanager Online](https://login.schulmanager-online.de/)** for providing the educational platform and API
+- **Home Assistant Community** for support
+- **HACS** for easy distribution
 
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/wunsch/schulmanager-online-hass/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/wunsch/schulmanager-online-hass/discussions)
-- **Documentation**: [Full Documentation](docs/)
+- **Home Assistant Community**: [Community Forum](https://community.home-assistant.io/)
 
 ## 🌍 Translations
 
@@ -527,7 +503,5 @@ The integration supports multiple languages:
 - Additional sensor types
 
 ---
-
-**⭐ If you find this integration useful, please consider giving it a star on GitHub!**
 
 **Made with ❤️ for the Home Assistant Community**
