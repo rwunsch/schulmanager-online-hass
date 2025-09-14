@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  homeassistant:
+    container_name: schulmanager-ha-test
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+      # Home Assistant configuration
+      - ./test-scripts/ha-config:/config
+      # Mount our custom integration directly
+      - ./custom_components:/config/custom_components
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "8123:8123"
+    restart: unless-stopped
+    networks:
+      - ha-network
+
+networks:
+  ha-network:
+    driver: bridge
