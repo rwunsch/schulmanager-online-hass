@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schulmanager Online Einrichtung",
+        "description": "Geben Sie Ihre Schulmanager Online Zugangsdaten ein",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
+      },
+      "options": {
+        "title": "Konfigurationsoptionen",
+        "description": "Konfigurieren Sie Ihre Schulmanager Online Integration.\n\nGefundene Schüler: {students}",
+        "data": {
+          "lookahead_weeks": "Wochen im Voraus (1-4)",
+          "include_homework": "Hausaufgaben-Kalender einbeziehen",
+          "include_exams": "Klassenarbeiten/Tests einbeziehen",
+          "include_grades": "Noten einbeziehen (experimentell)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zu Schulmanager Online fehlgeschlagen",
+      "invalid_auth": "Ungültige E-Mail oder Passwort",
+      "no_students": "Keine Schüler für dieses Konto gefunden",
+      "unknown": "Unerwarteter Fehler aufgetreten"
+    },
+    "abort": {
+      "already_configured": "Konto ist bereits konfiguriert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Schulmanager Online Optionen",
+        "description": "Aktualisieren Sie Ihre Integrationseinstellungen",
+        "data": {
+          "lookahead_weeks": "Wochen im Voraus (1-4)",
+          "include_homework": "Hausaufgaben-Kalender einbeziehen",
+          "include_exams": "Klassenarbeiten/Tests einbeziehen",
+          "include_grades": "Noten einbeziehen (experimentell)"
+        }
+      }
+    }
+  }
+}

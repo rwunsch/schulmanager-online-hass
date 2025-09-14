@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuración Schulmanager Online",
+        "description": "Ingrese sus credenciales de Schulmanager Online",
+        "data": {
+          "email": "Correo electrónico",
+          "password": "Contraseña"
+        }
+      },
+      "options": {
+        "title": "Opciones de configuración",
+        "description": "Configure su integración Schulmanager Online.\n\nEstudiantes encontrados: {students}",
+        "data": {
+          "lookahead_weeks": "Semanas por adelantado (1-4)",
+          "include_homework": "Incluir calendario de tareas",
+          "include_grades": "Incluir calificaciones (experimental)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar a Schulmanager Online",
+      "invalid_auth": "Correo electrónico o contraseña inválidos",
+      "no_students": "No se encontraron estudiantes para esta cuenta",
+      "unknown": "Error inesperado"
+    },
+    "abort": {
+      "already_configured": "La cuenta ya está configurada"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones Schulmanager Online",
+        "description": "Actualizar configuración de integración",
+        "data": {
+          "lookahead_weeks": "Semanas por adelantado (1-4)",
+          "include_homework": "Incluir calendario de tareas",
+          "include_grades": "Incluir calificaciones (experimental)"
+        }
+      }
+    }
+  }
+}

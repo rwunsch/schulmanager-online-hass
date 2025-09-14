@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schulmanager Online Instelling",
+        "description": "Voer uw Schulmanager Online inloggegevens in",
+        "data": {
+          "email": "E-mail",
+          "password": "Wachtwoord"
+        }
+      },
+      "options": {
+        "title": "Configuratie opties",
+        "description": "Configureer uw Schulmanager Online integratie.\n\nGevonden studenten: {students}",
+        "data": {
+          "lookahead_weeks": "Weken vooruit (1-4)",
+          "include_homework": "Huiswerk kalender opnemen",
+          "include_grades": "Cijfers opnemen (experimenteel)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken met Schulmanager Online",
+      "invalid_auth": "Ongeldig e-mail of wachtwoord",
+      "no_students": "Geen studenten gevonden voor dit account",
+      "unknown": "Onverwachte fout opgetreden"
+    },
+    "abort": {
+      "already_configured": "Account is al geconfigureerd"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Schulmanager Online Opties",
+        "description": "Integratie instellingen bijwerken",
+        "data": {
+          "lookahead_weeks": "Weken vooruit (1-4)",
+          "include_homework": "Huiswerk kalender opnemen",
+          "include_grades": "Cijfers opnemen (experimenteel)"
+        }
+      }
+    }
+  }
+}

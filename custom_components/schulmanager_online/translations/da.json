@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Schulmanager Online Opsætning",
+        "description": "Indtast dine Schulmanager Online loginoplysninger",
+        "data": {
+          "email": "E-mail",
+          "password": "Adgangskode"
+        }
+      },
+      "options": {
+        "title": "Konfigurationsmuligheder",
+        "description": "Konfigurer din Schulmanager Online integration.\n\nFundne studerende: {students}",
+        "data": {
+          "lookahead_weeks": "Uger frem (1-4)",
+          "include_homework": "Inkluder lektiekalender",
+          "include_grades": "Inkluder karakterer (eksperimentel)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke forbinde til Schulmanager Online",
+      "invalid_auth": "Ugyldig e-mail eller adgangskode",
+      "no_students": "Ingen studerende fundet for denne konto",
+      "unknown": "Uventet fejl opstod"
+    },
+    "abort": {
+      "already_configured": "Kontoen er allerede konfigureret"
+    }
+  }
+}

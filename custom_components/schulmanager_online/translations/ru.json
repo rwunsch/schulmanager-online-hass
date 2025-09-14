@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Настройка Schulmanager Online",
+        "description": "Введите ваши учетные данные Schulmanager Online",
+        "data": {
+          "email": "Электронная почта",
+          "password": "Пароль"
+        }
+      },
+      "options": {
+        "title": "Параметры конфигурации",
+        "description": "Настройте интеграцию Schulmanager Online.\n\nНайденные студенты: {students}",
+        "data": {
+          "lookahead_weeks": "Недели вперед (1-4)",
+          "include_homework": "Включить календарь домашних заданий",
+          "include_grades": "Включить оценки (экспериментально)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Не удалось подключиться к Schulmanager Online",
+      "invalid_auth": "Неверная электронная почта или пароль",
+      "no_students": "Студенты не найдены для этой учетной записи",
+      "unknown": "Произошла неожиданная ошибка"
+    },
+    "abort": {
+      "already_configured": "Учетная запись уже настроена"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Параметры Schulmanager Online",
+        "description": "Обновить настройки интеграции",
+        "data": {
+          "lookahead_weeks": "Недели вперед (1-4)",
+          "include_homework": "Включить календарь домашних заданий",
+          "include_grades": "Включить оценки (экспериментально)"
+        }
+      }
+    }
+  }
+}
