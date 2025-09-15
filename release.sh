@@ -2,13 +2,15 @@
 
 # 🚀 Schulmanager Online Release Script
 # 
-# This script automates the release process:
+# This script automates the HACS-compatible release process:
 # 1. Prompts for new version number
-# 2. Updates manifest.json with new version
-# 3. Commits and pushes changes
-# 4. Creates GitHub release with recent commit messages
+# 2. Updates manifest.json with new version (HACS tracks this)
+# 3. Commits and pushes changes with proper tagging
+# 4. Creates GitHub release with matching tag (required for HACS)
+# 5. HACS will detect the new version from manifest.json + GitHub release
 #
 # Requirements: gh CLI tool installed and authenticated
+# HACS Requirements: version in manifest.json must match GitHub release tag
 
 set -e  # Exit on any error
 
@@ -156,10 +158,11 @@ print_info "Selected version: $NEW_VERSION ($RELEASE_TYPE release)"
 # Confirm the release
 echo
 print_warning "This will:"
-echo "  • Update manifest.json version to $NEW_VERSION"
+echo "  • Update manifest.json version to $NEW_VERSION (HACS tracks this)"
 echo "  • Commit all changes with message: 'Release v$NEW_VERSION'"
-echo "  • Push to origin"
-echo "  • Create GitHub release with tag v$NEW_VERSION"
+echo "  • Push to origin with tag v$NEW_VERSION"
+echo "  • Create GitHub release with matching tag (required for HACS)"
+echo "  • HACS will detect the update from manifest.json version + GitHub release"
 echo
 read -p "Continue with release? (y/N): " -n 1 -r
 echo
@@ -198,11 +201,12 @@ $RECENT_COMMITS"
 
 print_success "Committed changes"
 
-# Push to origin
-print_info "Pushing to GitHub..."
-git push origin
+# Push to origin with tags (HACS requires matching tags)
+print_info "Pushing to GitHub with tags..."
+git push origin main
+git push origin "v$NEW_VERSION"
 
-print_success "Pushed to origin"
+print_success "Pushed to origin with tag v$NEW_VERSION"
 
 # Create GitHub release
 print_info "Creating GitHub release..."
@@ -213,13 +217,20 @@ RELEASE_NOTES="## 🚀 Release v$NEW_VERSION
 ### Changes in this release:
 $RECENT_COMMITS
 
-### 📦 Installation
-- **HACS**: Update through HACS interface
+### 📦 Installation & Updates
+- **HACS**: Update automatically through HACS interface (HACS tracks manifest.json version)
 - **Manual**: Download and extract to \`custom_components/schulmanager_online/\`
 
 ### 🔧 Upgrade Notes
 - Restart Home Assistant after installation
 - Check logs for any configuration issues
+- HACS users will be automatically notified of this update
+
+### 🎯 HACS Compatibility
+This release follows HACS standards:
+- ✅ Version in manifest.json: $NEW_VERSION
+- ✅ GitHub release tag: v$NEW_VERSION
+- ✅ Proper repository structure maintained
 
 ---
 **Full Changelog**: https://github.com/wunsch/schulmanager-online-hass/compare/v$CURRENT_VERSION...v$NEW_VERSION"
@@ -237,8 +248,9 @@ echo
 print_success "🎉 Release completed successfully!"
 print_info "Release details:"
 echo "  • Version: $CURRENT_VERSION → $NEW_VERSION"
-echo "  • Tag: v$NEW_VERSION"
+echo "  • Tag: v$NEW_VERSION (matches manifest.json version)"
 echo "  • Release URL: https://github.com/wunsch/schulmanager-online-hass/releases/tag/v$NEW_VERSION"
+echo "  • HACS Status: Will detect update from manifest.json version + GitHub release"
 
 # Optional: Open release in browser
 echo
