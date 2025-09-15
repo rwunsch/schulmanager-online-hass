@@ -37,3 +37,4 @@ coverage.xml
 ehthumbs.db
 Thumbs.db
 test-scripts/.credentials
+test-scripts/api_response_debug.json
