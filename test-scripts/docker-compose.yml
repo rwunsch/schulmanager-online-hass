@@ -4,7 +4,13 @@ services:
     image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
       # Home Assistant configuration
-      - ./ha-config:/config
+      #- ./ha-config/configuration.yaml:/config/configuration.yaml
+      #- ./ha-config/home-assistant.log:/config/home-assistant.log
+      #- ./ha-config/.storage/core.config:/config/.storage/core.config
+      #- ./ha-config/.storage/core.restore_state:/config/.storage/core.restore_state
+      #- ./ha-config/.storage/auth:/config/.storage/auth
+      #- ./ha-config/.storage/http:/config/.storage/http
+
       # Mount our custom integration directly
       - ../custom_components:/config/custom_components
       # Mount the custom card JS file directly from the integration (creates www directory automatically)
