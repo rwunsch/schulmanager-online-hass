@@ -1,0 +1,634 @@
+{
+  "authentication": {
+    "success": true,
+    "token_length": 147,
+    "token_expires": "2025-09-15T18:51:13.987203",
+    "user_data_keys": [
+      "email",
+      "username",
+      "localUsername",
+      "logodidactUsername",
+      "id",
+      "hasAdministratorRights",
+      "roles",
+      "firstname",
+      "lastname",
+      "institutionId",
+      "associatedTeachers",
+      "associatedStudent",
+      "associatedParents"
+    ]
+  },
+  "get_students": {
+    "success": true,
+    "count": 1,
+    "students": [
+      {
+        "id": 1234567,
+        "firstname": "John",
+        "lastname": "Doe",
+        "sex": "Male",
+        "classId": 123456,
+        "all_keys": [
+          "id",
+          "firstname",
+          "lastname",
+          "sex",
+          "classId"
+        ]
+      }
+    ]
+  },
+  "get_actual_lessons": {
+    "success": true,
+    "request": {
+      "student_id": 1234567,
+      "start_date": "2025-09-15",
+      "end_date": "2025-09-21",
+      "date_range_days": 7
+    },
+    "response_structure": {
+      "top_level_keys": [
+        "results",
+        "systemStatusMessages"
+      ],
+      "results_count": 1,
+      "first_result_keys": [
+        "status",
+        "data"
+      ],
+      "status": 200
+    },
+    "lessons_analysis": {
+      "total_lessons": 42,
+      "lessons_sample": [
+        {
+          "index": 0,
+          "all_keys": [
+            "date",
+            "classHour",
+            "type",
+            "actualLesson"
+          ],
+          "sample_values": {
+            "date": "2025-09-18",
+            "classHour": {
+              "id": 12345,
+              "number": "5"
+            },
+            "type": "regularLesson"
+          }
+        },
+        {
+          "index": 1,
+          "all_keys": [
+            "date",
+            "classHour",
+            "type",
+            "actualLesson"
+          ],
+          "sample_values": {
+            "date": "2025-09-18",
+            "classHour": {
+              "id": 12346,
+              "number": "6"
+            },
+            "type": "regularLesson"
+          }
+        },
+        {
+          "index": 2,
+          "all_keys": [
+            "date",
+            "classHour",
+            "type",
+            "actualLesson"
+          ],
+          "sample_values": {
+            "date": "2025-09-17",
+            "classHour": {
+              "id": 12347,
+              "number": "1"
+            },
+            "type": "regularLesson"
+          }
+        }
+      ]
+    },
+    "lesson_structure": {
+      "top_level_keys": [
+        "date",
+        "classHour",
+        "type",
+        "actualLesson"
+      ],
+      "nested_objects": {
+        "date": {
+          "type": "str",
+          "value": "2025-09-18"
+        },
+        "classHour": {
+          "type": "object",
+          "keys": [
+            "id",
+            "number"
+          ],
+          "sample_values": {
+            "id": 12345,
+            "number": "5"
+          }
+        },
+        "type": {
+          "type": "str",
+          "value": "regularLesson"
+        },
+        "actualLesson": {
+          "type": "object",
+          "keys": [
+            "room",
+            "subject",
+            "teachers",
+            "classes",
+            "studentGroups",
+            "subjectLabel",
+            "lessonId",
+            "courseId"
+          ],
+          "sample_values": {
+            "subjectLabel": "D",
+            "lessonId": 1234567,
+            "courseId": 7654321
+          }
+        }
+      }
+    }
+  },
+  "get_actual_lessons_raw": {
+    "results": [
+      {
+        "status": 200,
+        "data": [
+          {
+            "date": "2025-09-18",
+            "classHour": {
+              "id": 12345,
+              "number": "5"
+            },
+            "type": "regularLesson",
+            "actualLesson": {
+              "room": {
+                "id": 12345,
+                "name": "Room205"
+              },
+              "subject": {
+                "id": 12345,
+                "abbreviation": "D",
+                "name": "Deutsch",
+                "isPseudoSubject": false
+              },
+              "teachers": [
+                {
+                  "id": 12345,
+                  "abbreviation": "DoJ",
+                  "firstname": "John",
+                  "lastname": "Doe"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 12345,
+                  "name": "7f"
+                }
+              ],
+              "studentGroups": [
+                {
+                  "id": 12345,
+                  "name": "7f",
+                  "classId": 12345
+                }
+              ],
+              "subjectLabel": "D",
+              "lessonId": 1234567,
+              "courseId": 7654321
+            }
+          },
+          {
+            "date": "2025-09-19",
+            "comment": null,
+            "classHour": {
+              "id": 12346,
+              "number": "3"
+            },
+            "type": "cancelledLesson",
+            "originalLessons": [
+              {
+                "room": {
+                  "id": 12345,
+                  "name": "Room205"
+                },
+                "subject": {
+                  "id": 12345,
+                  "abbreviation": "D",
+                  "name": "Deutsch",
+                  "isPseudoSubject": false
+                },
+                "teachers": [
+                  {
+                    "id": 12345,
+                    "abbreviation": "DoJ",
+                    "firstname": "John",
+                    "lastname": "Doe"
+                  }
+                ],
+                "classes": [
+                  {
+                    "id": 12345,
+                    "name": "7f"
+                  }
+                ],
+                "studentGroups": [
+                  {
+                    "id": 12345,
+                    "name": "7f",
+                    "classId": 12345
+                  }
+                ],
+                "subjectLabel": "D",
+                "lessonId": 1234568,
+                "courseId": 7654321
+              }
+            ],
+            "isCancelled": true
+          },
+          {
+            "date": "2025-09-15",
+            "comment": "Room change notice",
+            "classHour": {
+              "id": 12347,
+              "number": "4"
+            },
+            "type": "changedLesson",
+            "actualLesson": {
+              "room": {
+                "id": 12346,
+                "name": "Room206"
+              },
+              "subject": {
+                "id": 12346,
+                "abbreviation": "SP",
+                "name": "Sport",
+                "isPseudoSubject": false
+              },
+              "teachers": [
+                {
+                  "id": 12346,
+                  "abbreviation": "SmJ",
+                  "firstname": "Jane",
+                  "lastname": "Smith"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 12345,
+                  "name": "7f"
+                }
+              ],
+              "studentGroups": [
+                {
+                  "id": 12345,
+                  "name": "7f",
+                  "classId": 12345
+                }
+              ],
+              "comment": "Room change notice",
+              "subjectLabel": "SP",
+              "substitutionId": 1234567
+            },
+            "originalLessons": [
+              {
+                "room": {
+                  "id": 12347,
+                  "name": "Gym1"
+                },
+                "subject": {
+                  "id": 12346,
+                  "abbreviation": "SP",
+                  "name": "Sport",
+                  "isPseudoSubject": false
+                },
+                "teachers": [
+                  {
+                    "id": 12347,
+                    "abbreviation": "DoJ",
+                    "firstname": "John",
+                    "lastname": "Doe"
+                  }
+                ],
+                "classes": [
+                  {
+                    "id": 12345,
+                    "name": "7f"
+                  }
+                ],
+                "studentGroups": [
+                  {
+                    "id": 12345,
+                    "name": "7f",
+                    "classId": 12345
+                  }
+                ],
+                "subjectLabel": "SP",
+                "lessonId": 1234569,
+                "courseId": 7654322
+              }
+            ],
+            "isSubstitution": true,
+            "isNew": false
+          },
+          {
+            "date": "2025-09-19",
+            "classHour": {
+              "id": 12348,
+              "number": "1"
+            },
+            "type": "event",
+            "event": {
+              "text": "School Event - Class Activity",
+              "teachers": [
+                {
+                  "id": 12345,
+                  "abbreviation": "DoJ",
+                  "firstname": "John",
+                  "lastname": "Doe"
+                },
+                {
+                  "id": 12346,
+                  "abbreviation": "SmF",
+                  "firstname": "Frank",
+                  "lastname": "Smith"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 12345,
+                  "name": "7f"
+                }
+              ],
+              "rooms": [],
+              "studentGroups": [
+                {
+                  "id": 12345,
+                  "name": "7f",
+                  "classId": 12345
+                }
+              ],
+              "absenceId": 123456
+            },
+            "isSubstitution": false,
+            "isNew": true
+          }
+        ]
+      }
+    ],
+    "systemStatusMessages": []
+  },
+  "get_class_hours": {
+    "success": true,
+    "request": {
+      "class_id": 123456
+    },
+    "response_structure": {
+      "top_level_keys": [
+        "results",
+        "systemStatusMessages"
+      ],
+      "results_count": 1,
+      "first_result_keys": [
+        "status",
+        "data"
+      ],
+      "status": 200
+    },
+    "class_hours_analysis": {
+      "total_hours": 11,
+      "hours_sample": [
+        {
+          "index": 0,
+          "all_keys": [
+            "id",
+            "number",
+            "from",
+            "until",
+            "fromByDay",
+            "untilByDay"
+          ],
+          "values": {
+            "id": 12345,
+            "number": "2",
+            "from": "08:48:00",
+            "until": "09:33:00",
+            "fromByDay": [
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00"
+            ],
+            "untilByDay": [
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00"
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "all_keys": [
+            "id",
+            "number",
+            "from",
+            "until",
+            "fromByDay",
+            "untilByDay"
+          ],
+          "values": {
+            "id": 12346,
+            "number": "3",
+            "from": "09:53:00",
+            "until": "10:38:00",
+            "fromByDay": [
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00"
+            ],
+            "untilByDay": [
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "get_class_hours_raw": {
+    "results": [
+      {
+        "status": 200,
+        "data": [
+          {
+            "id": 12345,
+            "number": "1",
+            "from": "08:00:00",
+            "until": "08:45:00",
+            "fromByDay": [
+              "08:00:00",
+              "08:00:00",
+              "08:00:00",
+              "08:00:00",
+              "08:00:00",
+              "08:00:00",
+              "08:00:00"
+            ],
+            "untilByDay": [
+              "08:45:00",
+              "08:45:00",
+              "08:45:00",
+              "08:45:00",
+              "08:45:00",
+              "08:45:00",
+              "08:45:00"
+            ]
+          },
+          {
+            "id": 12346,
+            "number": "2",
+            "from": "08:48:00",
+            "until": "09:33:00",
+            "fromByDay": [
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00",
+              "08:48:00"
+            ],
+            "untilByDay": [
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00",
+              "09:33:00"
+            ]
+          },
+          {
+            "id": 12347,
+            "number": "3",
+            "from": "09:53:00",
+            "until": "10:38:00",
+            "fromByDay": [
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00",
+              "09:53:00"
+            ],
+            "untilByDay": [
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00",
+              "10:38:00"
+            ]
+          }
+        ]
+      }
+    ],
+    "systemStatusMessages": []
+  },
+  "date_range_tests": {
+    "today": {
+      "success": true,
+      "start_date": "2025-09-15",
+      "end_date": "2025-09-15",
+      "lesson_count": 8,
+      "days_requested": 1
+    },
+    "tomorrow": {
+      "success": true,
+      "start_date": "2025-09-16",
+      "end_date": "2025-09-16",
+      "lesson_count": 5,
+      "days_requested": 1
+    },
+    "this_week": {
+      "success": true,
+      "start_date": "2025-09-15",
+      "end_date": "2025-09-21",
+      "lesson_count": 42,
+      "days_requested": 7
+    },
+    "next_week": {
+      "success": true,
+      "start_date": "2025-09-22",
+      "end_date": "2025-09-28",
+      "lesson_count": 36,
+      "days_requested": 7
+    },
+    "two_weeks": {
+      "success": true,
+      "start_date": "2025-09-15",
+      "end_date": "2025-09-28",
+      "lesson_count": 78,
+      "days_requested": 14
+    },
+    "past_week": {
+      "success": true,
+      "start_date": "2025-09-08",
+      "end_date": "2025-09-14",
+      "lesson_count": 36,
+      "days_requested": 7
+    }
+  },
+  "error_cases": {
+    "invalid_student_id": {
+      "success": true,
+      "response_received": true,
+      "status": 403,
+      "error_message": null
+    },
+    "invalid_date_format": {
+      "success": true,
+      "response_received": true,
+      "status": 500,
+      "error_message": null
+    },
+    "missing_parameters": {
+      "success": true,
+      "response_received": true,
+      "status": 403,
+      "error_message": null
+    }
+  }
+}
