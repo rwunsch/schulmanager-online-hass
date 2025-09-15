@@ -1,12 +1,12 @@
-# API-Implementierung - Python Client
+# API Implementation - Python Client
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Die `SchulmanagerAPI` Klasse ist der zentrale Python-Client für die Kommunikation mit der Schulmanager Online API. Sie implementiert alle notwendigen Funktionen für Authentifizierung, Datenabfrage und Session-Management.
+The `SchulmanagerAPI` class is the central Python client for communication with the Schulmanager Online API. It implements all necessary functions for authentication, data retrieval, and session management.
 
-## 🏗️ Klassen-Architektur
+## 🏗️ Class Architecture
 
-### SchulmanagerAPI Klasse
+### SchulmanagerAPI Class
 
 ```python
 class SchulmanagerAPI:
@@ -21,20 +21,20 @@ class SchulmanagerAPI:
         self.user_data: Dict[str, Any] = {}
 ```
 
-### Wichtige Attribute
+### Important Attributes
 
-| Attribut | Typ | Beschreibung |
+| Attribute | Type | Description |
 |----------|-----|--------------|
-| `email` | `str` | Benutzer-Email oder Username |
-| `password` | `str` | Original-Passwort (nicht gehashed) |
-| `session` | `aiohttp.ClientSession` | HTTP-Session für Requests |
-| `token` | `Optional[str]` | JWT-Token für API-Calls |
-| `token_expires` | `Optional[datetime]` | Token-Ablaufzeit |
-| `user_data` | `Dict[str, Any]` | User-Daten aus Login-Response |
+| `email` | `str` | User email or username |
+| `password` | `str` | Original password (not hashed) |
+| `session` | `aiohttp.ClientSession` | HTTP session for requests |
+| `token` | `Optional[str]` | JWT token for API calls |
+| `token_expires` | `Optional[datetime]` | Token expiration time |
+| `user_data` | `Dict[str, Any]` | User data from login response |
 
-## 🔐 Authentifizierungs-Methoden
+## 🔐 Authentication Methods
 
-### 1. Hauptauthentifizierung
+### 1. Main Authentication
 
 ```python
 async def authenticate(self) -> None:
@@ -54,14 +54,14 @@ async def authenticate(self) -> None:
         raise SchulmanagerAPIError(f"Authentication failed: {e}") from e
 ```
 
-### 2. Salt-Abruf
+### 2. Salt Retrieval
 
 ```python
 async def _get_salt(self) -> str:
     """Get salt for password hashing."""
     payload = {
         "emailOrUsername": self.email,
-        "mobileApp": False,  # Wichtig für Web-Clients
+        "mobileApp": False,  # Important for web clients
         "institutionId": None
     }
     
@@ -86,16 +86,16 @@ async def _get_salt(self) -> str:
         return salt
 ```
 
-### 3. Hash-Generierung
+### 3. Hash Generation
 
 ```python
 def _generate_salted_hash(self, password: str, salt: str) -> str:
     """Generate salted hash using PBKDF2-SHA512"""
     try:
         password_bytes = password.encode('utf-8')
-        salt_bytes = salt.encode('utf-8')  # UTF-8, nicht Hex!
+        salt_bytes = salt.encode('utf-8')  # UTF-8, not Hex!
         
-        # PBKDF2-SHA512 mit 99999 Iterationen, 512 Bytes Output
+        # PBKDF2-SHA512 with 99999 iterations, 512 bytes output
         hash_bytes = hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 99999, dklen=512)
         
         # Convert to hex (1024 characters)
@@ -125,7 +125,7 @@ async def _login(self, salted_hash: str) -> None:
             raise SchulmanagerAPIError(f"Login failed: {response.status}")
         
         data = await response.json()
-        self.token = data.get("jwt") or data.get("token")  # Beide Varianten prüfen
+        self.token = data.get("jwt") or data.get("token")  # Check both variants
         
         if not self.token:
             raise SchulmanagerAPIError("No token received")
@@ -139,9 +139,9 @@ async def _login(self, salted_hash: str) -> None:
         _LOGGER.debug("Login successful, token expires at %s", self.token_expires)
 ```
 
-## 📊 Datenabfrage-Methoden
+## 📊 Data Retrieval Methods
 
-### 1. Schülerdaten abrufen
+### 1. Get Students
 
 ```python
 async def get_students(self) -> List[Dict[str, Any]]:
@@ -176,7 +176,7 @@ async def get_students(self) -> List[Dict[str, Any]]:
         raise SchulmanagerAPIError(f"Failed to get students: {e}") from e
 ```
 
-### 2. Stundenplan abrufen
+### 2. Get Schedule
 
 ```python
 async def get_schedule(
@@ -199,7 +199,7 @@ async def get_schedule(
     
     try:
         response = await self._make_api_call(requests)
-        results = response.get("results", [])  # GEÄNDERT: "results" statt "responses"
+        results = response.get("results", [])  # CHANGED: "results" instead of "responses"
         
         if not results:
             raise SchulmanagerAPIError("No schedule response")
@@ -216,7 +216,7 @@ async def get_schedule(
         raise SchulmanagerAPIError(f"Failed to get schedule: {e}") from e
 ```
 
-### 3. Hausaufgaben abrufen
+### 3. Get Homework
 
 ```python
 async def get_homework(self, student_id: int) -> Dict[str, Any]:
@@ -253,7 +253,7 @@ async def get_homework(self, student_id: int) -> Dict[str, Any]:
         raise SchulmanagerAPIError(f"Failed to get homework: {e}") from e
 ```
 
-### 4. Klassenarbeiten abrufen
+### 4. Get Exams
 
 ```python
 async def get_exams(self, student_id: int, start_date: datetime.date, end_date: datetime.date) -> Dict[str, Any]:
@@ -293,7 +293,7 @@ async def get_exams(self, student_id: int, start_date: datetime.date, end_date: 
         raise SchulmanagerAPIError(f"Failed to get exams: {e}") from e
 ```
 
-### 5. Noten abrufen (Experimental)
+### 5. Get Grades (Experimental)
 
 ```python
 async def get_grades(self, student_id: int) -> Dict[str, Any]:
@@ -329,7 +329,7 @@ async def get_grades(self, student_id: int) -> Dict[str, Any]:
         raise SchulmanagerAPIError(f"Failed to get grades: {e}") from e
 ```
 
-### 3. Generische API-Calls
+### 3. Generic API Calls
 
 ```python
 async def _make_api_call(self, requests: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -337,7 +337,7 @@ async def _make_api_call(self, requests: List[Dict[str, Any]]) -> Dict[str, Any]
     await self._ensure_authenticated()
     
     payload = {
-        "bundleVersion": "3505280ee7",  # KRITISCH: Erforderlich für alle API-Calls!
+        "bundleVersion": "3505280ee7",  # CRITICAL: Required for all API calls!
         "requests": requests
     }
     
@@ -364,9 +364,9 @@ async def _make_api_call(self, requests: List[Dict[str, Any]]) -> Dict[str, Any]
         return await response.json()
 ```
 
-## 🔄 Session-Management
+## 🔄 Session Management
 
-### Token-Validierung
+### Token Validation
 
 ```python
 async def _ensure_authenticated(self) -> None:
@@ -381,10 +381,10 @@ async def _ensure_authenticated(self) -> None:
         await self.authenticate()
 ```
 
-### Session-Konfiguration
+### Session Configuration
 
 ```python
-# Empfohlene aiohttp.ClientSession Konfiguration
+# Recommended aiohttp.ClientSession configuration
 timeout = aiohttp.ClientTimeout(total=30)
 connector = aiohttp.TCPConnector(limit=10, limit_per_host=5)
 
@@ -397,7 +397,7 @@ session = aiohttp.ClientSession(
 )
 ```
 
-## 🚨 Fehlerbehandlung
+## 🚨 Error Handling
 
 ### Custom Exception
 
@@ -407,17 +407,17 @@ class SchulmanagerAPIError(Exception):
     pass
 ```
 
-### Fehler-Kategorien
+### Error Categories
 
-| Fehlertyp | HTTP Status | Beschreibung | Behandlung |
-|-----------|-------------|--------------|------------|
-| **Authentication** | 401 | Token ungültig/abgelaufen | Automatische Re-Authentifizierung |
-| **Authorization** | 403 | Keine Berechtigung | Fehler an Benutzer weiterleiten |
-| **Bad Request** | 400 | Ungültige Parameter | Parameter validieren |
-| **Not Found** | 404 | Endpunkt nicht gefunden | API-Version prüfen |
-| **Server Error** | 500+ | Server-Problem | Retry mit Backoff |
+| Error Type | HTTP Status | Description | Handling |
+|-----------|-------------|-------------|----------|
+| **Authentication** | 401 | Token invalid/expired | Automatic re-authentication |
+| **Authorization** | 403 | No permission | Forward error to user |
+| **Bad Request** | 400 | Invalid parameters | Validate parameters |
+| **Not Found** | 404 | Endpoint not found | Check API version |
+| **Server Error** | 500+ | Server problem | Retry with backoff |
 
-### Retry-Logic
+### Retry Logic
 
 ```python
 async def _make_api_call_with_retry(self, requests: List[Dict[str, Any]], max_retries: int = 3) -> Dict[str, Any]:
@@ -438,38 +438,38 @@ async def _make_api_call_with_retry(self, requests: List[Dict[str, Any]], max_re
 
 ## 📝 Logging
 
-### Logger-Konfiguration
+### Logger Configuration
 
 ```python
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-# In Home Assistant wird automatisch konfiguriert
-# Für Standalone-Tests:
+# In Home Assistant automatically configured
+# For standalone tests:
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 ```
 
-### Debug-Ausgaben
+### Debug Output
 
 ```python
-# Wichtige Debug-Informationen
+# Important debug information
 _LOGGER.debug("Salt received: %s characters", len(salt))
 _LOGGER.debug("Hash generated: %s characters", len(hash_hex))
 _LOGGER.debug("Login successful, token expires at %s", self.token_expires)
 _LOGGER.debug("Found %d students", len(students))
 
-# Fehler-Logging
+# Error logging
 _LOGGER.error("Authentication failed: %s", e)
 _LOGGER.warning("No students found in user data. User data keys: %s", list(self.user_data.keys()))
 ```
 
 ## 🧪 Testing
 
-### Unit-Tests
+### Unit Tests
 
 ```python
 import pytest
@@ -499,7 +499,7 @@ class TestSchulmanagerAPI:
         assert isinstance(hash_result, str)
 ```
 
-### Integration-Tests
+### Integration Tests
 
 ```python
 async def test_full_api_flow():
@@ -524,7 +524,7 @@ async def test_full_api_flow():
         assert isinstance(schedule, list)
 ```
 
-## 📚 Verwendung in Home Assistant
+## 📚 Usage in Home Assistant
 
 ### Integration in Coordinator
 
@@ -549,9 +549,9 @@ class SchulmanagerOnlineDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {e}")
 ```
 
-## 🔧 Konfiguration
+## 🔧 Configuration
 
-### Konstanten
+### Constants
 
 ```python
 # API URLs
@@ -563,25 +563,25 @@ API_URL = "https://login.schulmanager-online.de/api/calls"
 DEFAULT_TIMEOUT = 30
 TOKEN_REFRESH_BUFFER = timedelta(minutes=5)
 
-# Bundle Version (sollte regelmäßig aktualisiert werden)
+# Bundle Version (should be updated regularly)
 BUNDLE_VERSION = "3505280ee7"
 ```
 
-### Umgebungsvariablen
+### Environment Variables
 
 ```python
 import os
 
-# Für Tests
+# For tests
 TEST_EMAIL = os.getenv("SCHULMANAGER_EMAIL")
 TEST_PASSWORD = os.getenv("SCHULMANAGER_PASSWORD")
 
-# Debug-Modus
+# Debug mode
 DEBUG_API = os.getenv("DEBUG_SCHULMANAGER_API", "false").lower() == "true"
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [Authentication Guide](Authentication_Guide.md) - Detaillierte Authentifizierung
-- [Integration Architecture](Integration_Architecture.md) - Home Assistant Integration
-- [Troubleshooting](Troubleshooting_Guide.md) - Problemlösungen
+- [Authentication Guide](Authentication_Guide.md) - Detailed authentication
+- [Integration Architecture](Integration_Architecture.md) - Home Assistant integration
+- [Troubleshooting](Troubleshooting_Guide.md) - Problem solutions

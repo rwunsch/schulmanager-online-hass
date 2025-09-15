@@ -1,14 +1,14 @@
-# Docker Guide für Schulmanager Online Integration
+# Docker Guide for Schulmanager Online Integration
 
-## Überblick
+## Overview
 
-Diese Anleitung erklärt, wie du Docker für die Entwicklung und das Testen der Schulmanager Online Home Assistant Integration verwendest.
+This guide explains how to use Docker for developing and testing the Schulmanager Online Home Assistant integration.
 
 ## Docker Setup
 
-### Aktuelle Konfiguration
+### Current Configuration
 
-Das Projekt verwendet eine Docker Compose Konfiguration für Home Assistant:
+The project uses a Docker Compose configuration for Home Assistant:
 
 ```yaml
 # test-scripts/docker-compose.yml
@@ -27,233 +27,233 @@ services:
     restart: unless-stopped
 ```
 
-### Wichtige Pfade
+### Important Paths
 
 - **Custom Components**: `../custom_components` → `/config/custom_components`
 - **HA Config**: `./ha-config` → `/config`
 - **Web Interface**: `http://localhost:8123`
 
-## Docker Befehle
+## Docker Commands
 
-### 1. Container starten
+### 1. Start Container
 
 ```bash
-# Aus dem test-scripts Verzeichnis
+# From the test-scripts directory
 cd test-scripts
 docker compose up -d
 
-# Oder mit explizitem DOCKER_HOST (falls nötig)
+# Or with explicit DOCKER_HOST (if needed)
 export DOCKER_HOST="unix:///var/run/docker.sock"
 docker compose up -d
 ```
 
-### 2. Container neu starten
+### 2. Restart Container
 
 ```bash
-# Schneller Neustart (behält Image)
+# Quick restart (keeps image)
 export DOCKER_HOST="unix:///var/run/docker.sock"
 docker restart schulmanager-ha-test
 
-# Oder mit docker compose
+# Or with docker compose
 cd test-scripts
 docker compose restart
 ```
 
-### 3. Container stoppen
+### 3. Stop Container
 
 ```bash
-# Container stoppen
+# Stop container
 docker stop schulmanager-ha-test
 
-# Oder mit docker compose
+# Or with docker compose
 cd test-scripts
 docker compose down
 ```
 
-### 4. Container neu bauen (bei Image-Updates)
+### 4. Rebuild Container (for image updates)
 
 ```bash
 cd test-scripts
 
-# Image neu laden
+# Pull new image
 docker compose pull
 
-# Container neu erstellen
+# Recreate container
 docker compose up -d --force-recreate
 ```
 
-### 5. Logs anzeigen
+### 5. View Logs
 
 ```bash
-# Aktuelle Logs
+# Current logs
 export DOCKER_HOST="unix:///var/run/docker.sock"
 docker logs schulmanager-ha-test
 
-# Live Logs verfolgen
+# Follow live logs
 docker logs -f schulmanager-ha-test
 
-# Nur die letzten 50 Zeilen
+# Only last 50 lines
 docker logs schulmanager-ha-test --tail 50
 
-# Logs nach Schulmanager filtern
+# Filter logs for Schulmanager
 docker logs schulmanager-ha-test | grep -i schulmanager
 ```
 
-## Entwicklungsworkflow
+## Development Workflow
 
-### 1. Code-Änderungen
+### 1. Code Changes
 
-Wenn du Änderungen an der Integration machst:
+When making changes to the integration:
 
-1. **Python-Dateien** (`.py`): Home Assistant lädt diese automatisch neu
-2. **JavaScript-Dateien** (Custom Card): Benötigt Browser-Refresh
-3. **Konfigurationsdateien**: Benötigt HA-Neustart
+1. **Python files** (`.py`): Home Assistant automatically reloads these
+2. **JavaScript files** (Custom Card): Requires browser refresh
+3. **Configuration files**: Requires HA restart
 
-### 2. Integration neu laden
+### 2. Reload Integration
 
 ```bash
-# Nur die Integration neu laden (schnell)
-# Über HA UI: Einstellungen → Geräte & Dienste → Schulmanager Online → Neu laden
+# Only reload integration (fast)
+# Via HA UI: Settings → Devices & Services → Schulmanager Online → Reload
 
-# Oder kompletter HA-Neustart
+# Or complete HA restart
 export DOCKER_HOST="unix:///var/run/docker.sock"
 docker restart schulmanager-ha-test
 ```
 
 ### 3. Custom Card Updates
 
-Nach Änderungen an der Custom Card:
+After changes to the custom card:
 
-1. Container neu starten (kopiert die Card neu)
-2. Browser-Cache leeren (`Ctrl+F5`)
-3. Lovelace-Dashboard neu laden
+1. Restart container (copies card again)
+2. Clear browser cache (`Ctrl+F5`)
+3. Reload Lovelace dashboard
 
 ## Debugging
 
-### 1. Container-Status prüfen
+### 1. Check Container Status
 
 ```bash
-# Container-Status
+# Container status
 docker ps | grep schulmanager
 
-# Container-Details
+# Container details
 docker inspect schulmanager-ha-test
 ```
 
-### 2. In Container einsteigen
+### 2. Enter Container
 
 ```bash
-# Shell im Container
+# Shell in container
 docker exec -it schulmanager-ha-test /bin/bash
 
-# Dateien im Container prüfen
+# Check files in container
 docker exec schulmanager-ha-test ls -la /config/custom_components/schulmanager_online/
 ```
 
-### 3. Logs analysieren
+### 3. Analyze Logs
 
 ```bash
-# Fehler finden
+# Find errors
 docker logs schulmanager-ha-test 2>&1 | grep -i error
 
-# Schulmanager-spezifische Logs
+# Schulmanager-specific logs
 docker logs schulmanager-ha-test 2>&1 | grep -i schulmanager
 
-# API-Aufrufe verfolgen
+# Track API calls
 docker logs schulmanager-ha-test 2>&1 | grep -E "(API|400|401|500)"
 ```
 
 ### 4. Custom Card Debug
 
 ```bash
-# Prüfen ob Card kopiert wurde
+# Check if card was copied
 docker exec schulmanager-ha-test ls -la /config/www/schulmanager-schedule-card.js
 
-# Card-Registrierung in Logs
+# Card registration in logs
 docker logs schulmanager-ha-test 2>&1 | grep -i "custom cards"
 ```
 
-## Häufige Probleme
+## Common Problems
 
 ### 1. "Custom element doesn't exist"
 
-**Problem**: Custom Card wird nicht gefunden
+**Problem**: Custom card not found
 
-**Lösung**:
+**Solution**:
 ```bash
-# Container neu starten (kopiert Card neu)
+# Restart container (copies card again)
 docker restart schulmanager-ha-test
 
-# Browser-Cache leeren
-# Dann: Ctrl+F5 im Browser
+# Clear browser cache
+# Then: Ctrl+F5 in browser
 ```
 
-### 2. "Permission denied" Fehler
+### 2. "Permission denied" errors
 
-**Problem**: Docker Socket Berechtigung
+**Problem**: Docker socket permission
 
-**Lösung**:
+**Solution**:
 ```bash
-# Docker Socket Berechtigung prüfen
+# Check docker socket permission
 ls -la /var/run/docker.sock
 
-# User zur docker Gruppe hinzufügen
+# Add user to docker group
 sudo usermod -aG docker $USER
 
-# Neu anmelden oder:
+# Re-login or:
 newgrp docker
 ```
 
-### 3. Port 8123 bereits belegt
+### 3. Port 8123 already in use
 
-**Problem**: Port-Konflikt
+**Problem**: Port conflict
 
-**Lösung**:
+**Solution**:
 ```bash
-# Prüfen was Port 8123 verwendet
+# Check what's using port 8123
 sudo netstat -tlnp | grep :8123
 
-# Anderen Port verwenden (docker-compose.yml ändern)
+# Use different port (change docker-compose.yml)
 ports:
-  - "8124:8123"  # Statt 8123:8123
+  - "8124:8123"  # Instead of 8123:8123
 ```
 
-### 4. Integration lädt nicht
+### 4. Integration doesn't load
 
-**Problem**: Python-Fehler in der Integration
+**Problem**: Python errors in integration
 
-**Lösung**:
+**Solution**:
 ```bash
-# Syntax-Fehler finden
+# Find syntax errors
 docker logs schulmanager-ha-test 2>&1 | grep -i "syntaxerror\|importerror"
 
-# Integration-spezifische Fehler
+# Integration-specific errors
 docker logs schulmanager-ha-test 2>&1 | grep "schulmanager_online"
 ```
 
-## Performance-Tipps
+## Performance Tips
 
-### 1. Volumes optimieren
+### 1. Optimize Volumes
 
 ```yaml
-# Nur notwendige Dateien mounten
+# Only mount necessary files
 volumes:
   - ../custom_components/schulmanager_online:/config/custom_components/schulmanager_online
   - ./ha-config/configuration.yaml:/config/configuration.yaml
 ```
 
-### 2. Image-Updates
+### 2. Image Updates
 
 ```bash
-# Regelmäßig Image aktualisieren
+# Regularly update image
 docker compose pull
 docker compose up -d --force-recreate
 ```
 
-### 3. Log-Rotation
+### 3. Log Rotation
 
 ```bash
-# Logs begrenzen (docker-compose.yml)
+# Limit logs (docker-compose.yml)
 services:
   homeassistant:
     logging:
@@ -263,20 +263,20 @@ services:
         max-file: "3"
 ```
 
-## Produktions-Deployment
+## Production Deployment
 
 ### 1. HACS Installation
 
-Für die Produktion sollte die Integration über HACS installiert werden:
+For production, the integration should be installed via HACS:
 
-1. HACS in Home Assistant installieren
-2. Custom Repository hinzufügen: `https://github.com/wunsch/schulmanager-online-hass`
-3. Integration über HACS installieren
+1. Install HACS in Home Assistant
+2. Add custom repository: `https://github.com/wunsch/schulmanager-online-hass`
+3. Install integration through HACS
 
-### 2. Manuelle Installation
+### 2. Manual Installation
 
 ```bash
-# In Home Assistant config Verzeichnis
+# In Home Assistant config directory
 cd /config/custom_components/
 git clone https://github.com/wunsch/schulmanager-online-hass.git schulmanager_online
 ```
@@ -284,7 +284,7 @@ git clone https://github.com/wunsch/schulmanager-online-hass.git schulmanager_on
 ### 3. Backup
 
 ```bash
-# Konfiguration sichern
+# Backup configuration
 docker exec schulmanager-ha-test tar -czf /config/backup.tar.gz /config/custom_components/schulmanager_online/
 docker cp schulmanager-ha-test:/config/backup.tar.gz ./backup.tar.gz
 ```
@@ -304,19 +304,19 @@ services:
       retries: 3
 ```
 
-### 2. Log-Monitoring
+### 2. Log Monitoring
 
 ```bash
-# Kontinuierliches Monitoring
+# Continuous monitoring
 watch -n 5 'docker logs schulmanager-ha-test --tail 10'
 
-# Fehler-Alerts
+# Error alerts
 docker logs -f schulmanager-ha-test | grep -i error
 ```
 
-## Nützliche Aliases
+## Useful Aliases
 
-Füge diese zu deiner `~/.bashrc` hinzu:
+Add these to your `~/.bashrc`:
 
 ```bash
 # Schulmanager Docker Aliases
@@ -325,13 +325,13 @@ alias ha-restart='export DOCKER_HOST="unix:///var/run/docker.sock" && docker res
 alias ha-shell='docker exec -it schulmanager-ha-test /bin/bash'
 alias ha-status='docker ps | grep schulmanager'
 
-# Mit Parametern
+# With parameters
 function ha-grep() {
     docker logs schulmanager-ha-test 2>&1 | grep -i "$1"
 }
 ```
 
-Verwendung:
+Usage:
 ```bash
 ha-logs --tail 20
 ha-restart

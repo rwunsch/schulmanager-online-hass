@@ -1,16 +1,16 @@
-# Klassenarbeiten-API - Detaillierte Dokumentation
+# Exams API - Detailed Documentation
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Die Klassenarbeiten-API ermöglicht das Abrufen von Klassenarbeiten, Tests und Lernkontrollen für Schüler über das `exams`-Modul der Schulmanager Online API. Diese Dokumentation beschreibt die Implementierung, Datenstrukturen und Verwendung.
+The Exams API enables retrieving class tests, exams, and assessments for students via the `exams` module of the Schulmanager Online API. This documentation describes the implementation, data structures, and usage.
 
-## 📡 API-Endpunkt
+## 📡 API Endpoint
 
-### Klassenarbeiten abrufen
+### Retrieve Exams
 
-**Endpunkt**: `exams/get-exams`
-**Methode**: POST
-**Modul**: `exams`
+**Endpoint**: `exams/get-exams`
+**Method**: POST
+**Module**: `exams`
 
 ```http
 POST /api/calls
@@ -33,17 +33,17 @@ Content-Type: application/json
 }
 ```
 
-### Parameter
+### Parameters
 
-| Parameter | Typ | Beschreibung | Erforderlich |
-|-----------|-----|--------------|--------------|
-| `student.id` | `number` | ID des Schülers | ✅ |
-| `start` | `string` | Start-Datum (YYYY-MM-DD) | ✅ |
-| `end` | `string` | End-Datum (YYYY-MM-DD) | ✅ |
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `student.id` | `number` | Student ID | ✅ |
+| `start` | `string` | Start date (YYYY-MM-DD) | ✅ |
+| `end` | `string` | End date (YYYY-MM-DD) | ✅ |
 
-## 📊 Response-Struktur
+## 📊 Response Structure
 
-### Erfolgreiche Response
+### Successful Response
 
 ```json
 {
@@ -55,12 +55,12 @@ Content-Type: application/json
           "id": 3163060,
           "subject": {
             "id": 255645,
-            "name": "Deutsch",
+            "name": "German",
             "abbreviation": "D"
           },
           "type": {
             "id": 2224,
-            "name": "Klassenarbeit",
+            "name": "Class Test",
             "color": "#c6dcef",
             "visibleForStudents": true
           },
@@ -83,7 +83,7 @@ Content-Type: application/json
           "id": 3163061,
           "subject": {
             "id": 255652,
-            "name": "Englisch, Beginn in Jahrgangsklasse 5",
+            "name": "English, Beginning in Grade 5",
             "abbreviation": "E"
           },
           "type": {
@@ -109,32 +109,32 @@ Content-Type: application/json
 }
 ```
 
-### Datenfeld-Beschreibung
+### Data Field Description
 
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| `id` | `number` | Eindeutige ID der Klassenarbeit |
-| `subject` | `object` | Fach-Informationen |
-| `subject.id` | `number` | Fach-ID |
-| `subject.name` | `string` | Vollständiger Fach-Name |
-| `subject.abbreviation` | `string` | Fach-Kürzel (z.B. "D", "M", "E") |
-| `type` | `object` | Prüfungstyp-Informationen |
-| `type.id` | `number` | Typ-ID |
-| `type.name` | `string` | Typ-Name (z.B. "Klassenarbeit", "Test") |
-| `type.color` | `string` | Hex-Farbcode für UI-Darstellung |
-| `type.visibleForStudents` | `boolean` | Sichtbarkeit für Schüler |
-| `date` | `string` | Prüfungsdatum (YYYY-MM-DD) |
-| `startClassHour` | `object` | Schulstunden-Informationen |
-| `startClassHour.number` | `string` | Stundennummer |
-| `startClassHour.from` | `string` | Startzeit (HH:MM:SS) |
-| `startClassHour.until` | `string` | Endzeit (HH:MM:SS) |
-| `comment` | `string` | Zusätzliche Kommentare/Hinweise |
-| `createdAt` | `string` | Erstellungsdatum (ISO-Format) |
-| `updatedAt` | `string` | Letzte Aktualisierung (ISO-Format) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `number` | Unique exam ID |
+| `subject` | `object` | Subject information |
+| `subject.id` | `number` | Subject ID |
+| `subject.name` | `string` | Full subject name |
+| `subject.abbreviation` | `string` | Subject abbreviation (e.g. "D", "M", "E") |
+| `type` | `object` | Exam type information |
+| `type.id` | `number` | Type ID |
+| `type.name` | `string` | Type name (e.g. "Class Test", "Test") |
+| `type.color` | `string` | Hex color code for UI display |
+| `type.visibleForStudents` | `boolean` | Visibility for students |
+| `date` | `string` | Exam date (YYYY-MM-DD) |
+| `startClassHour` | `object` | Class hour information |
+| `startClassHour.number` | `string` | Hour number |
+| `startClassHour.from` | `string` | Start time (HH:MM:SS) |
+| `startClassHour.until` | `string` | End time (HH:MM:SS) |
+| `comment` | `string` | Additional comments/notes |
+| `createdAt` | `string` | Creation date (ISO format) |
+| `updatedAt` | `string` | Last update (ISO format) |
 
-## 🐍 Python-Implementierung
+## 🐍 Python Implementation
 
-### API-Client-Methode
+### API Client Method
 
 ```python
 async def get_exams(self, student_id: int, start_date: datetime.date, end_date: datetime.date) -> Dict[str, Any]:
@@ -170,7 +170,7 @@ async def get_exams(self, student_id: int, start_date: datetime.date, end_date: 
         raise SchulmanagerAPIError(f"Failed to get exams: {e}") from e
 ```
 
-### Coordinator-Integration
+### Coordinator Integration
 
 ```python
 # In coordinator.py
@@ -190,18 +190,18 @@ async def _async_update_data(self):
             student_data["exams"] = {"exams": []}
 ```
 
-## 📊 Sensor-Integration
+## 📊 Sensor Integration
 
-### Klassenarbeiten-Sensoren
+### Exam Sensors
 
-Die Klassenarbeiten-API wird in 4 verschiedene Sensoren integriert:
+The Exams API is integrated into 4 different sensors:
 
-1. **Exams Today** - Heute anstehende Klassenarbeiten
-2. **Exams This Week** - Klassenarbeiten dieser Woche
-3. **Exams Next Week** - Klassenarbeiten nächster Woche
-4. **Exams Upcoming** - Kommende Klassenarbeiten (30 Tage)
+1. **Exams Today** - Exams scheduled for today
+2. **Exams This Week** - Exams this week
+3. **Exams Next Week** - Exams next week
+4. **Exams Upcoming** - Upcoming exams (30 days)
 
-### Sensor-Logik
+### Sensor Logic
 
 ```python
 def get_exams_today_count(student_data: Dict[str, Any]) -> str:
@@ -248,7 +248,7 @@ def get_exams_this_week_attributes(student_data: Dict[str, Any]) -> Dict[str, An
     return attributes
 ```
 
-### Daten-Transformation
+### Data Transformation
 
 ```python
 def _format_exam_info(exam: Dict[str, Any]) -> Dict[str, Any]:
@@ -291,7 +291,7 @@ def _format_exam_info(exam: Dict[str, Any]) -> Dict[str, Any]:
     }
 ```
 
-### Prüfungstyp-Prioritäten
+### Exam Type Priorities
 
 ```python
 def get_exam_priority(exam: Dict[str, Any]) -> int:
@@ -302,50 +302,50 @@ def get_exam_priority(exam: Dict[str, Any]) -> int:
     else:
         type_name = str(exam_type).lower()
     
-    # Priority order: Klassenarbeit > Test > Lernkontrolle > other
-    if "klassenarbeit" in type_name or "klausur" in type_name:
+    # Priority order: Class Test > Test > Assessment > other
+    if "class test" in type_name or "klassenarbeit" in type_name:
         return 1
     elif "test" in type_name:
         return 2
-    elif "lernkontrolle" in type_name or "lk" in type_name:
+    elif "assessment" in type_name or "lernkontrolle" in type_name:
         return 3
     else:
         return 4
 ```
 
-## 🎨 Farbkodierung
+## 🎨 Color Coding
 
-### Standard-Farben
+### Standard Colors
 
-| Prüfungstyp | Hex-Code | RGB | Beschreibung |
-|-------------|----------|-----|--------------|
-| **Klassenarbeit** | `#c6dcef` | (198, 220, 239) | Hellblau |
-| **Test** | `#ffeb3b` | (255, 235, 59) | Gelb |
-| **Lernkontrolle** | `#81c784` | (129, 199, 132) | Hellgrün |
-| **Klausur** | `#f48fb1` | (244, 143, 177) | Rosa |
+| Exam Type | Hex Code | RGB | Description |
+|-----------|----------|-----|-------------|
+| **Class Test** | `#c6dcef` | (198, 220, 239) | Light Blue |
+| **Test** | `#ffeb3b` | (255, 235, 59) | Yellow |
+| **Assessment** | `#81c784` | (129, 199, 132) | Light Green |
+| **Final Exam** | `#f48fb1` | (244, 143, 177) | Pink |
 
-### UI-Integration
+### UI Integration
 
 ```python
 def get_exam_color_class(exam_type: str) -> str:
     """Get CSS class for exam type color."""
     type_lower = exam_type.lower()
     
-    if "klassenarbeit" in type_lower:
-        return "exam-klassenarbeit"
+    if "class test" in type_lower or "klassenarbeit" in type_lower:
+        return "exam-class-test"
     elif "test" in type_lower:
         return "exam-test"
-    elif "lernkontrolle" in type_lower:
-        return "exam-lernkontrolle"
-    elif "klausur" in type_lower:
-        return "exam-klausur"
+    elif "assessment" in type_lower or "lernkontrolle" in type_lower:
+        return "exam-assessment"
+    elif "final exam" in type_lower or "klausur" in type_lower:
+        return "exam-final"
     else:
         return "exam-default"
 ```
 
-## 🧪 Test-Implementation
+## 🧪 Test Implementation
 
-### Test-Script
+### Test Script
 
 ```python
 #!/usr/bin/env python3
@@ -411,7 +411,7 @@ if __name__ == "__main__":
     asyncio.run(test_exams_api())
 ```
 
-### Curl-Test
+### Curl Test
 
 ```bash
 # Test exams API with curl
@@ -432,18 +432,18 @@ curl 'https://login.schulmanager-online.de/api/calls' \
   }'
 ```
 
-## 🚨 Fehlerbehandlung
+## 🚨 Error Handling
 
-### Häufige Fehler
+### Common Errors
 
-| Fehler | Status | Ursache | Lösung |
-|--------|--------|---------|--------|
-| `No exams response` | - | API-Response leer | Retry-Logic implementieren |
-| `Exams request failed: 400` | 400 | Ungültige Parameter | Datumsformat validieren |
-| `Exams request failed: 401` | 401 | Token abgelaufen | Token erneuern |
-| `Exams request failed: 403` | 403 | Keine Berechtigung | Account-Typ prüfen |
+| Error | Status | Cause | Solution |
+|-------|--------|-------|----------|
+| `No exams response` | - | API response empty | Implement retry logic |
+| `Exams request failed: 400` | 400 | Invalid parameters | Validate date format |
+| `Exams request failed: 401` | 401 | Token expired | Renew token |
+| `Exams request failed: 403` | 403 | No permission | Check account type |
 
-### Datumsvalidierung
+### Date Validation
 
 ```python
 def validate_date_range(start_date: datetime.date, end_date: datetime.date) -> None:
@@ -462,25 +462,25 @@ def validate_date_range(start_date: datetime.date, end_date: datetime.date) -> N
         raise ValueError("Start date too far in the past")
 ```
 
-## 📱 Dashboard-Integration
+## 📱 Dashboard Integration
 
-### Lovelace-Karten
+### Lovelace Cards
 
 ```yaml
-# Klassenarbeiten-Übersicht
+# Exam Overview
 type: entities
-title: "Klassenarbeiten - Marc Cedric"
+title: "Exams - Marc Cedric"
 entities:
   - entity: sensor.name_of_child_exams_today
-    name: "Heute"
+    name: "Today"
   - entity: sensor.name_of_child_exams_this_week
-    name: "Diese Woche"
+    name: "This Week"
   - entity: sensor.name_of_child_exams_next_week
-    name: "Nächste Woche"
+    name: "Next Week"
   - entity: sensor.name_of_child_exams_upcoming
-    name: "Kommend (30 Tage)"
+    name: "Upcoming (30 days)"
 
-# Detaillierte Klassenarbeiten-Card
+# Detailed Exam Card
 type: custom:schulmanager-exams-card
 entity: sensor.name_of_child_exams_upcoming
 view: upcoming
@@ -488,12 +488,12 @@ show_colors: true
 show_countdown: true
 ```
 
-### Automatisierungen
+### Automations
 
 ```yaml
-# Erinnerung vor Klassenarbeiten
+# Exam Reminder
 automation:
-  - alias: "Klassenarbeiten - Erinnerung"
+  - alias: "Exams - Reminder"
     trigger:
       - platform: template
         value_template: >
@@ -508,20 +508,20 @@ automation:
     action:
       - service: notify.family
         data:
-          title: "📝 Klassenarbeit in 3 Tagen"
+          title: "📝 Exam in 3 Days"
           message: >
             {% set exams = state_attr('sensor.name_of_child_exams_upcoming', 'exams') %}
             {% for exam in exams %}
               {% if exam.days_until == 3 %}
-                {{ exam.subject }} {{ exam.type }} am {{ exam.date }}
+                {{ exam.subject }} {{ exam.type }} on {{ exam.date }}
                 {% if exam.comment %}
-                  Hinweis: {{ exam.comment }}
+                  Note: {{ exam.comment }}
                 {% endif %}
               {% endif %}
             {% endfor %}
 ```
 
-## 📊 Kalender-Integration
+## 📊 Calendar Integration
 
 ### Calendar Events
 
@@ -563,9 +563,9 @@ async def async_get_events(self, hass, start_date, end_date):
                     start=datetime.combine(exam_date, start_time),
                     end=datetime.combine(exam_date, end_time),
                     summary=f"📝 {type_name}: {subject_name}",
-                    description=f"Schüler: {student['firstname']} {student['lastname']}\n"
-                               f"Typ: {type_name}\n"
-                               f"Fach: {subject_name}\n"
+                    description=f"Student: {student['firstname']} {student['lastname']}\n"
+                               f"Type: {type_name}\n"
+                               f"Subject: {subject_name}\n"
                                f"{exam.get('comment', '')}".strip(),
                     uid=f"exam_{exam['id']}_{student_id}",
                 )
@@ -574,10 +574,10 @@ async def async_get_events(self, hass, start_date, end_date):
     return events
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [API Analysis](API_Analysis.md) - Vollständige API-Dokumentation
-- [Sensors Documentation](Sensors_Documentation.md) - Sensor-Details
-- [Integration Architecture](Integration_Architecture.md) - Architektur-Übersicht
-- [Calendar Integration](Calendar_Integration.md) - Kalender-Integration
-- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problemlösungen
+- [API Analysis](API_Analysis.md) - Complete API documentation
+- [Sensors Documentation](Sensors_Documentation.md) - Sensor details
+- [Integration Architecture](Integration_Architecture.md) - Architecture overview
+- [Calendar Integration](Calendar_Integration.md) - Calendar integration
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions

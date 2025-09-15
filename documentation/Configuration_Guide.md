@@ -1,134 +1,134 @@
-# Konfiguration - Benutzer-Guide
+# Configuration - User Guide
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Dieser Guide führt Sie durch die komplette Konfiguration der Schulmanager Online Integration in Home Assistant, von der ersten Einrichtung bis zur erweiterten Anpassung.
+This guide walks you through the complete configuration of the Schulmanager Online integration in Home Assistant, from initial setup to advanced customization.
 
-## 🚀 Erste Einrichtung
+## 🚀 Initial Setup
 
-### 1. Integration hinzufügen
+### 1. Add Integration
 
-1. **Home Assistant öffnen** (http://localhost:8123)
-2. **Settings** → **Devices & Services** aufrufen
-3. **"+ ADD INTEGRATION"** klicken
-4. **"Schulmanager Online"** suchen und auswählen
-5. **Anmeldedaten eingeben**:
-   - **Email/Username**: Ihre Schulmanager Online Anmeldedaten
-   - **Password**: Ihr Passwort
-6. **"SUBMIT"** klicken
+1. **Open Home Assistant** (http://localhost:8123)
+2. Go to **Settings** → **Devices & Services**
+3. Click **"+ ADD INTEGRATION"**
+4. Search for and select **"Schulmanager Online"**
+5. **Enter login credentials**:
+   - **Email/Username**: Your Schulmanager Online login credentials
+   - **Password**: Your password
+6. Click **"SUBMIT"**
 
-### 2. Konfiguration validieren
+### 2. Validate Configuration
 
-Nach erfolgreicher Einrichtung sollten Sie sehen:
-- ✅ **Integration erfolgreich hinzugefügt**
-- ✅ **Schüler erkannt**: "Marc Cedric Wunsch" (oder Ihr Schüler)
-- ✅ **Sensoren erstellt**: 8 Sensoren pro Schüler
+After successful setup, you should see:
+- ✅ **Integration successfully added**
+- ✅ **Student detected**: "Marc Cedric Wunsch" (or your student)
+- ✅ **Sensors created**: 8 sensors per student
 
-### 3. Erste Überprüfung
+### 3. Initial Check
 
 ```yaml
 # Developer Tools > States
-# Suchen Sie nach:
+# Search for:
 sensor.name_of_child_current_lesson
 sensor.name_of_child_next_lesson
 sensor.name_of_child_todays_lessons
-# ... weitere Sensoren
+# ... additional sensors
 ```
 
-## 📊 Sensor-Konfiguration
+## 📊 Sensor Configuration
 
-### Verfügbare Sensoren
+### Available Sensors
 
-Für jeden Schüler werden automatisch 8 Sensoren erstellt:
+For each student, 8 sensors are automatically created:
 
-| Sensor | Entity ID | Beschreibung |
-|--------|-----------|--------------|
-| **Current Lesson** | `sensor.{student}_current_lesson` | Aktuelle Unterrichtsstunde |
-| **Next Lesson** | `sensor.{student}_next_lesson` | Nächste Unterrichtsstunde |
-| **Today's Lessons** | `sensor.{student}_todays_lessons` | Anzahl heutiger Stunden |
-| **Today's Changes** | `sensor.{student}_todays_changes` | Anzahl heutiger Vertretungen |
-| **Next School Day** | `sensor.{student}_next_school_day` | Nächster Schultag |
-| **This Week** | `sensor.{student}_this_week` | Stunden diese Woche |
-| **Next Week** | `sensor.{student}_next_week` | Stunden nächste Woche |
-| **Changes Detected** | `sensor.{student}_changes_detected` | Erkannte Änderungen |
+| Sensor | Entity ID | Description |
+|--------|-----------|-------------|
+| **Current Lesson** | `sensor.{student}_current_lesson` | Current lesson |
+| **Next Lesson** | `sensor.{student}_next_lesson` | Next lesson |
+| **Today's Lessons** | `sensor.{student}_todays_lessons` | Number of lessons today |
+| **Today's Changes** | `sensor.{student}_todays_changes` | Number of substitutions today |
+| **Next School Day** | `sensor.{student}_next_school_day` | Next school day |
+| **This Week** | `sensor.{student}_this_week` | Lessons this week |
+| **Next Week** | `sensor.{student}_next_week` | Lessons next week |
+| **Changes Detected** | `sensor.{student}_changes_detected` | Detected changes |
 
-### Sensor-Anpassungen
+### Sensor Customization
 
 ```yaml
-# configuration.yaml - Sensor-Namen anpassen
+# configuration.yaml - Customize sensor names
 homeassistant:
   customize:
     sensor.name_of_child_current_lesson:
-      friendly_name: "Aktuelle Stunde"
+      friendly_name: "Current Lesson"
       icon: mdi:school
     sensor.name_of_child_next_lesson:
-      friendly_name: "Nächste Stunde"
+      friendly_name: "Next Lesson"
       icon: mdi:clock-outline
 ```
 
-## 📅 Kalender-Integration
+## 📅 Calendar Integration
 
-### Kalender aktivieren
+### Enable Calendar
 
-Die Kalender-Integration wird automatisch mit der Hauptintegration aktiviert:
+The calendar integration is automatically activated with the main integration:
 
 ```yaml
-# Kalender-Entity wird automatisch erstellt:
+# Calendar entity is automatically created:
 calendar.name_of_child_schedule
 ```
 
-### Kalender-Konfiguration
+### Calendar Configuration
 
 ```yaml
 # configuration.yaml
 calendar:
   - platform: schulmanager_online
-    # Automatisch konfiguriert durch Integration
+    # Automatically configured through integration
 ```
 
-### Kalender in Lovelace
+### Calendar in Lovelace
 
 ```yaml
-# Dashboard-Card für Kalender
+# Dashboard card for calendar
 type: calendar
 entities:
   - calendar.name_of_child_schedule
-title: "Stundenplan"
+title: "Schedule"
 initial_view: listWeek
 ```
 
-## 🎨 Dashboard-Integration
+## 🎨 Dashboard Integration
 
-### Basis-Dashboard
+### Basic Dashboard
 
 ```yaml
-# Einfache Entity-Card
+# Simple Entity Card
 type: entities
 title: "Schulmanager - Marc Cedric"
 entities:
   - entity: sensor.name_of_child_current_lesson
-    name: "Aktuelle Stunde"
+    name: "Current Lesson"
   - entity: sensor.name_of_child_next_lesson
-    name: "Nächste Stunde"
+    name: "Next Lesson"
   - entity: sensor.name_of_child_todays_changes
-    name: "Heutige Vertretungen"
+    name: "Today's Substitutions"
 ```
 
-### Erweiterte Dashboard-Karten
+### Advanced Dashboard Cards
 
 ```yaml
-# Glance-Card für Übersicht
+# Glance Card for overview
 type: glance
-title: "Stundenplan Übersicht"
+title: "Schedule Overview"
 entities:
   - entity: sensor.name_of_child_current_lesson
-    name: "Jetzt"
+    name: "Now"
   - entity: sensor.name_of_child_next_lesson
-    name: "Als nächstes"
+    name: "Next"
   - entity: sensor.name_of_child_todays_lessons
-    name: "Heute"
+    name: "Today"
   - entity: sensor.name_of_child_todays_changes
-    name: "Vertretungen"
+    name: "Substitutions"
 ```
 
 ### Custom Card Integration
@@ -138,33 +138,33 @@ entities:
 type: custom:schulmanager-schedule-card
 entity: sensor.name_of_child_current_lesson
 view: weekly_matrix
-title: "Stundenplan Marc Cedric"
+title: "Schedule Marc Cedric"
 show_header: true
 show_breaks: true
 ```
 
-## 🔔 Benachrichtigungen
+## 🔔 Notifications
 
-### Vertretungs-Benachrichtigungen
+### Substitution Notifications
 
 ```yaml
 # automations.yaml
-- alias: "Schulmanager - Neue Vertretung"
+- alias: "Schulmanager - New Substitution"
   trigger:
     - platform: state
       entity_id: sensor.name_of_child_changes_detected
-      to: "Neue Änderungen"
+      to: "New Changes"
   action:
     - service: notify.mobile_app_your_phone
       data:
-        title: "📚 Stundenplan-Änderung"
+        title: "📚 Schedule Change"
         message: >
-          Neue Vertretung für {{ state_attr('sensor.name_of_child_changes_detected', 'student_name') }}:
+          New substitution for {{ state_attr('sensor.name_of_child_changes_detected', 'student_name') }}:
           {% set changes = state_attr('sensor.name_of_child_changes_detected', 'changes') %}
           {% if changes and changes|length > 0 %}
-            {{ changes[0].subject }} am {{ changes[0].date }}
+            {{ changes[0].subject }} on {{ changes[0].date }}
             {% if changes[0].new_teacher %}
-              bei {{ changes[0].new_teacher }}
+              with {{ changes[0].new_teacher }}
             {% endif %}
           {% endif %}
         data:
@@ -172,11 +172,11 @@ show_breaks: true
           group: "schulmanager"
 ```
 
-### Erinnerungen
+### Reminders
 
 ```yaml
-# Erinnerung vor Schulbeginn
-- alias: "Schulmanager - Schule beginnt bald"
+# Reminder before school starts
+- alias: "Schulmanager - School starts soon"
   trigger:
     - platform: template
       value_template: >
@@ -186,21 +186,21 @@ show_breaks: true
   action:
     - service: notify.family
       data:
-        title: "🎒 Schule beginnt bald"
+        title: "🎒 School starts soon"
         message: >
           {{ state_attr('sensor.name_of_child_next_lesson', 'subject') }} 
-          beginnt in 30 Minuten in Raum {{ state_attr('sensor.name_of_child_next_lesson', 'room') }}
+          starts in 30 minutes in room {{ state_attr('sensor.name_of_child_next_lesson', 'room') }}
 ```
 
-## 🎯 Template-Sensoren
+## 🎯 Template Sensors
 
-### Erweiterte Template-Sensoren
+### Advanced Template Sensors
 
 ```yaml
 # configuration.yaml
 template:
   - sensor:
-      - name: "Nächste Stunde mit Countdown"
+      - name: "Next Lesson with Countdown"
         state: >
           {% set next_lesson = states('sensor.name_of_child_next_lesson') %}
           {% set minutes = state_attr('sensor.name_of_child_next_lesson', 'minutes_until') %}
@@ -212,60 +212,60 @@ template:
         attributes:
           icon: mdi:clock-outline
           
-      - name: "Schultag Status"
+      - name: "School Day Status"
         state: >
           {% set current = states('sensor.name_of_child_current_lesson') %}
           {% set next = states('sensor.name_of_child_next_lesson') %}
-          {% if current != 'Kein Unterricht' %}
-            Unterricht läuft
-          {% elif next != 'Kein weiterer Unterricht heute' %}
-            Pause
+          {% if current != 'No lessons' %}
+            Lesson in progress
+          {% elif next != 'No more lessons today' %}
+            Break
           {% else %}
-            Schulfrei
+            No school
           {% endif %}
         attributes:
           current_lesson: "{{ states('sensor.name_of_child_current_lesson') }}"
           next_lesson: "{{ states('sensor.name_of_child_next_lesson') }}"
 ```
 
-### Wöchentliche Statistiken
+### Weekly Statistics
 
 ```yaml
 template:
   - sensor:
-      - name: "Wochenstunden Mathematik"
+      - name: "Math Hours This Week"
         state: >
           {% set week_data = state_attr('sensor.name_of_child_this_week', 'subjects_summary') %}
-          {{ week_data.Mathematik if week_data else 0 }}
-        unit_of_measurement: "Stunden"
+          {{ week_data.Mathematics if week_data else 0 }}
+        unit_of_measurement: "hours"
         
-      - name: "Vertretungen diese Woche"
+      - name: "Substitutions This Week"
         state: >
           {{ state_attr('sensor.name_of_child_this_week', 'total_changes') or 0 }}
-        unit_of_measurement: "Vertretungen"
+        unit_of_measurement: "substitutions"
 ```
 
-## 🔧 Erweiterte Konfiguration
+## 🔧 Advanced Configuration
 
-### Update-Intervalle anpassen
+### Adjust Update Intervals
 
 ```yaml
-# Nicht direkt konfigurierbar, aber über Customization möglich
+# Not directly configurable, but possible through customization
 homeassistant:
   customize:
     sensor.name_of_child_current_lesson:
-      # Sensor-spezifische Einstellungen
-      scan_interval: 300  # 5 Minuten (Standard: 15 Minuten)
+      # Sensor-specific settings
+      scan_interval: 300  # 5 minutes (default: 15 minutes)
 ```
 
-### Multi-User Setup (Familie)
+### Multi-User Setup (Family)
 
 ```yaml
-# Mehrere Integrationen für verschiedene Accounts
-# Integration 1: Eltern-Account
-# Integration 2: Schüler-Account (falls vorhanden)
+# Multiple integrations for different accounts
+# Integration 1: Parent account
+# Integration 2: Student account (if available)
 
-# Gruppierung in Dashboard
+# Grouping in dashboard
 type: vertical-stack
 cards:
   - type: entities
@@ -275,23 +275,23 @@ cards:
       - sensor.name_of_child_next_lesson
   
   - type: entities
-    title: "Anna Wunsch"  # Zweites Kind
+    title: "Anna Wunsch"  # Second child
     entities:
       - sensor.anna_wunsch_current_lesson
       - sensor.anna_wunsch_next_lesson
 ```
 
-### Zeitzone-Konfiguration
+### Timezone Configuration
 
 ```yaml
 # configuration.yaml
 homeassistant:
-  time_zone: Europe/Berlin  # Wichtig für korrekte Zeitberechnung
+  time_zone: Europe/Berlin  # Important for correct time calculation
   
-# Explizite Zeitzone für Sensoren
+# Explicit timezone for sensors
 template:
   - sensor:
-      - name: "Aktuelle Stunde (Zeitzone-sicher)"
+      - name: "Current Lesson (Timezone-safe)"
         state: >
           {% set now = now().astimezone() %}
           {% set current = states('sensor.name_of_child_current_lesson') %}
@@ -301,40 +301,40 @@ template:
           timezone: "{{ now().tzname() }}"
 ```
 
-## 🎨 Themes und Styling
+## 🎨 Themes and Styling
 
-### Custom Theme für Schulmanager
+### Custom Theme for Schulmanager
 
 ```yaml
 # themes.yaml
 schulmanager_theme:
-  # Hauptfarben
-  primary-color: "#1976d2"          # Schulblau
-  accent-color: "#ff9800"           # Orange für Highlights
+  # Main colors
+  primary-color: "#1976d2"          # School blue
+  accent-color: "#ff9800"           # Orange for highlights
   
-  # Card-Farben
+  # Card colors
   card-background-color: "#ffffff"
   card-border-radius: "8px"
   
-  # Sensor-spezifische Farben
+  # Sensor-specific colors
   state-icon-color: "#1976d2"
   state-icon-active-color: "#ff9800"
   
-  # Text-Farben
+  # Text colors
   primary-text-color: "#212121"
   secondary-text-color: "#757575"
   
-  # Spezielle Schulmanager-Farben
-  schulmanager-current-lesson: "#4caf50"    # Grün für aktuelle Stunde
-  schulmanager-next-lesson: "#ff9800"       # Orange für nächste Stunde
-  schulmanager-substitution: "#f44336"      # Rot für Vertretungen
+  # Special Schulmanager colors
+  schulmanager-current-lesson: "#4caf50"    # Green for current lesson
+  schulmanager-next-lesson: "#ff9800"       # Orange for next lesson
+  schulmanager-substitution: "#f44336"      # Red for substitutions
 ```
 
-### Card-spezifisches Styling
+### Card-specific Styling
 
 ```yaml
 type: entities
-title: "Stundenplan"
+title: "Schedule"
 style: |
   ha-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -347,9 +347,9 @@ entities:
   - sensor.name_of_child_current_lesson
 ```
 
-## 🔍 Debugging und Logs
+## 🔍 Debugging and Logs
 
-### Debug-Logging aktivieren
+### Enable Debug Logging
 
 ```yaml
 # configuration.yaml
@@ -363,72 +363,72 @@ logger:
     custom_components.schulmanager_online.calendar: debug
 ```
 
-### Log-Analyse
+### Log Analysis
 
 ```bash
-# Home Assistant Logs filtern
+# Filter Home Assistant logs
 grep -i "schulmanager" /config/home-assistant.log
 
-# Spezifische Komponenten-Logs
+# Specific component logs
 grep "custom_components.schulmanager_online" /config/home-assistant.log
 ```
 
-## 🔄 Wartung und Updates
+## 🔄 Maintenance and Updates
 
-### Integration aktualisieren
+### Update Integration
 
-1. **HACS öffnen**
+1. **Open HACS**
 2. **Integrations** → **Schulmanager Online**
-3. **Update** klicken (falls verfügbar)
-4. **Home Assistant neu starten**
+3. Click **Update** (if available)
+4. **Restart Home Assistant**
 
-### Konfiguration zurücksetzen
+### Reset Configuration
 
 ```yaml
-# Integration entfernen und neu hinzufügen
+# Remove integration and add again
 # Settings > Devices & Services > Schulmanager Online > Delete
-# Dann neu konfigurieren
+# Then reconfigure
 ```
 
-### Daten-Cache leeren
+### Clear Data Cache
 
 ```bash
-# Home Assistant neu starten um Cache zu leeren
-# Oder über UI: Settings > System > Restart
+# Restart Home Assistant to clear cache
+# Or via UI: Settings > System > Restart
 ```
 
-## 🚨 Häufige Konfigurationsprobleme
+## 🚨 Common Configuration Problems
 
-### Problem: Sensoren zeigen "Unavailable"
+### Problem: Sensors show "Unavailable"
 
-**Lösung:**
+**Solution:**
 ```yaml
-# Prüfen Sie die Integration in Settings > Devices & Services
-# Neu konfigurieren falls nötig
-# Debug-Logs aktivieren für Details
+# Check integration in Settings > Devices & Services
+# Reconfigure if necessary
+# Enable debug logs for details
 ```
 
-### Problem: Falsche Zeitzone
+### Problem: Wrong Timezone
 
-**Lösung:**
+**Solution:**
 ```yaml
 # configuration.yaml
 homeassistant:
-  time_zone: Europe/Berlin  # Korrekte Zeitzone setzen
+  time_zone: Europe/Berlin  # Set correct timezone
 ```
 
-### Problem: Custom Card lädt nicht
+### Problem: Custom Card doesn't load
 
-**Lösung:**
+**Solution:**
 ```yaml
-# Resource-Pfad prüfen
+# Check resource path
 lovelace:
   resources:
     - url: /hacsfiles/schulmanager_online/schulmanager-schedule-card.js
       type: module
 
-# Browser-Cache leeren (Ctrl+F5)
-# Home Assistant neu starten
+# Clear browser cache (Ctrl+F5)
+# Restart Home Assistant
 ```
 
 ## 📱 Mobile App Integration
@@ -436,16 +436,16 @@ lovelace:
 ### Mobile Dashboard
 
 ```yaml
-# Spezielle Mobile-Ansicht
+# Special mobile view
 views:
-  - title: Schule
+  - title: School
     path: school
     icon: mdi:school
     panel: false
     cards:
       - type: custom:schulmanager-schedule-card
         entity: sensor.name_of_child_current_lesson
-        view: compact  # Kompakte Ansicht für Mobile
+        view: compact  # Compact view for mobile
         
       - type: entities
         entities:
@@ -453,14 +453,14 @@ views:
           - sensor.name_of_child_next_school_day
 ```
 
-### Push-Benachrichtigungen
+### Push Notifications
 
 ```yaml
-# Mobile App Benachrichtigungen
+# Mobile app notifications
 - service: notify.mobile_app_your_phone
   data:
     title: "📚 Schulmanager"
-    message: "Neue Vertretung erkannt"
+    message: "New substitution detected"
     data:
       tag: "schulmanager"
       group: "school"
@@ -469,30 +469,30 @@ views:
       icon_url: "/local/icons/school.png"
 ```
 
-## 📚 Weiterführende Konfiguration
+## 📚 Advanced Configuration
 
 ### Home Assistant Add-ons
 
 ```yaml
-# Nützliche Add-ons für Schulmanager Integration:
-# - File Editor (für Konfiguration)
-# - Terminal & SSH (für Debugging)
-# - Grafana (für erweiterte Visualisierung)
+# Useful add-ons for Schulmanager integration:
+# - File Editor (for configuration)
+# - Terminal & SSH (for debugging)
+# - Grafana (for advanced visualization)
 ```
 
-### Backup-Konfiguration
+### Backup Configuration
 
 ```yaml
-# Wichtige Dateien für Backup:
+# Important files for backup:
 # - configuration.yaml
 # - automations.yaml
 # - /config/custom_components/schulmanager_online/
-# - Dashboard-Konfigurationen
+# - Dashboard configurations
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [Integration Architecture](Integration_Architecture.md) - Technische Details
-- [Sensors Documentation](Sensors_Documentation.md) - Sensor-Referenz
-- [Custom Card Documentation](Custom_Card_Documentation.md) - UI-Komponenten
-- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problemlösungen
+- [Integration Architecture](Integration_Architecture.md) - Technical details
+- [Sensors Documentation](Sensors_Documentation.md) - Sensor reference
+- [Custom Card Documentation](Custom_Card_Documentation.md) - UI components
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions

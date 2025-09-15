@@ -1,97 +1,97 @@
-# Sensoren - Detaillierte Dokumentation
+# Sensors - Detailed Documentation
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Die Schulmanager Online Integration stellt **16 verschiedene Sensor-Entitäten** bereit, die unterschiedliche Aspekte des Stundenplans und der Schulaktivitäten abdecken. Jeder Sensor wird automatisch für jeden konfigurierten Schüler erstellt:
+The Schulmanager Online integration provides **16 different sensor entities** that cover various aspects of the schedule and school activities. Each sensor is automatically created for every configured student:
 
-- **8 Stundenplan-Sensoren** - Aktuelle Stunden, Vertretungen, Wochenpläne
-- **4 Hausaufgaben-Sensoren** - Fällige und kommende Hausaufgaben
-- **4 Klassenarbeiten-Sensoren** - Anstehende Tests und Klassenarbeiten
+- **8 Schedule Sensors** - Current lessons, substitutions, weekly schedules
+- **4 Homework Sensors** - Due and upcoming homework assignments
+- **4 Exam Sensors** - Upcoming tests and exams
 
-## 🔧 Konsistente Datenformatierung (Refactoring 2025)
+## 🔧 Consistent Data Formatting (Refactoring 2025)
 
-**Wichtige Änderung**: Alle Sensoren verwenden jetzt ein einheitliches Datenformat für Stunden-Attribute:
+**Important Change**: All sensors now use a unified data format for lesson attributes:
 
-### Einheitliche Fächerbehandlung
-- **`subject`**: Vollständiger Fächername (z.B. "Evangelische Religionslehre (konfessionell kooperativ)")
-- **`subject_abbreviation`**: Abkürzung (z.B. "EN")
-- **`subject_sanitized`**: Bereinigter Fächername ohne Klammern und Kommas (z.B. "Evangelische Religionslehre")
+### Unified Subject Handling
+- **`subject`**: Full subject name (e.g., "Evangelische Religionslehre (konfessionell kooperativ)")
+- **`subject_abbreviation`**: Abbreviation (e.g., "EN")
+- **`subject_sanitized`**: Clean subject name without parentheses and commas (e.g., "Evangelische Religionslehre")
 
-### Standardisierte Stundenattribute
-Alle Stunden-Sensoren verwenden jetzt das gleiche Attributformat:
+### Standardized Lesson Attributes
+All lesson sensors now use the same attribute format:
 ```json
 {
-  "subject": "Vollständiger Fächername",
-  "subject_abbreviation": "Abkürzung",
-  "subject_sanitized": "Bereinigter Fächername",
+  "subject": "Full subject name",
+  "subject_abbreviation": "Abbreviation",
+  "subject_sanitized": "Clean subject name",
   "time": "08:00-08:45",
-  "room": "Raumbezeichnung",
-  "teacher": "Lehrerküzel",
-  "teacher_lastname": "Nachname",
-  "teacher_firstname": "Vorname",
+  "room": "Room designation",
+  "teacher": "Teacher abbreviation",
+  "teacher_lastname": "Last name",
+  "teacher_firstname": "First name",
   "is_substitution": false,
   "type": "regularLesson",
   "comment": "",
   "date": "2025-09-16",
-  "class_hour": "Stundennummer"
+  "class_hour": "Class hour number"
 }
 ```
 
-**Behobene Inkonsistenzen**:
-- Alle Sensoren verwenden jetzt den vollständigen Fächernamen im `subject`-Feld
-- Einheitliche Zeitformatierung als "HH:MM-HH:MM"
-- Konsistente Lehrerinformationen mit Vollname und Kürzel
-- Reduzierte Code-Duplikation durch gemeinsame Formatierungsfunktionen
+**Fixed Inconsistencies**:
+- All sensors now use the full subject name in the `subject` field
+- Unified time formatting as "HH:MM-HH:MM"
+- Consistent teacher information with full name and abbreviation
+- Reduced code duplication through shared formatting functions
 
-## 📊 Sensor-Übersicht
+## 📊 Sensor Overview
 
-### Stundenplan-Sensoren
-| Sensor | Entity ID | Icon | Update-Intervall | Beschreibung |
-|--------|-----------|------|------------------|--------------|
-| **Current Lesson** | `sensor.{student}_current_lesson` | `mdi:school` | 5 Minuten | Aktuelle Unterrichtsstunde |
-| **Next Lesson** | `sensor.{student}_next_lesson` | `mdi:clock-outline` | 5 Minuten | Nächste Unterrichtsstunde |
-| **Today's Lessons** | `sensor.{student}_todays_lessons` | `mdi:calendar-today` | 15 Minuten | Alle heutigen Stunden |
-| **Today's Changes** | `sensor.{student}_todays_changes` | `mdi:swap-horizontal` | 15 Minuten | Heutige Vertretungen |
-| **Next School Day** | `sensor.{student}_next_school_day` | `mdi:calendar-arrow-right` | 15 Minuten | Nächster Schultag |
-| **This Week** | `sensor.{student}_this_week` | `mdi:calendar-week` | 1 Stunde | Stundenplan diese Woche |
-| **Next Week** | `sensor.{student}_next_week` | `mdi:calendar-week-begin` | 1 Stunde | Stundenplan nächste Woche |
-| **Changes Detected** | `sensor.{student}_changes_detected` | `mdi:alert-circle` | Bei Änderung | Erkannte Änderungen |
+### Schedule Sensors
+| Sensor | Entity ID | Icon | Update Interval | Description |
+|--------|-----------|------|-----------------|-------------|
+| **Current Lesson** | `sensor.{student}_current_lesson` | `mdi:school` | 5 minutes | Current class period |
+| **Next Lesson** | `sensor.{student}_next_lesson` | `mdi:clock-outline` | 5 minutes | Next class period |
+| **Today's Lessons** | `sensor.{student}_todays_lessons` | `mdi:calendar-today` | 15 minutes | All today's lessons |
+| **Today's Changes** | `sensor.{student}_todays_changes` | `mdi:swap-horizontal` | 15 minutes | Today's substitutions |
+| **Next School Day** | `sensor.{student}_next_school_day` | `mdi:calendar-arrow-right` | 15 minutes | Next school day |
+| **This Week** | `sensor.{student}_this_week` | `mdi:calendar-week` | 1 hour | Schedule for this week |
+| **Next Week** | `sensor.{student}_next_week` | `mdi:calendar-week-begin` | 1 hour | Schedule for next week |
+| **Changes Detected** | `sensor.{student}_changes_detected` | `mdi:alert-circle` | On change | Detected changes |
 
-### Hausaufgaben-Sensoren
-| Sensor | Entity ID | Icon | Update-Intervall | Beschreibung |
-|--------|-----------|------|------------------|--------------|
-| **Homework Due Today** | `sensor.{student}_homework_due_today` | `mdi:alarm-check` | 15 Minuten | Hausaufgaben fällig heute |
-| **Homework Due Tomorrow** | `sensor.{student}_homework_due_tomorrow` | `mdi:calendar-arrow-right` | 15 Minuten | Hausaufgaben fällig morgen |
-| **Homework Overdue** | `sensor.{student}_homework_overdue` | `mdi:alarm-snooze` | 15 Minuten | Überfällige Hausaufgaben |
-| **Homework Upcoming** | `sensor.{student}_homework_upcoming` | `mdi:notebook-edit-outline` | 15 Minuten | Kommende Hausaufgaben |
+### Homework Sensors
+| Sensor | Entity ID | Icon | Update Interval | Description |
+|--------|-----------|------|-----------------|-------------|
+| **Homework Due Today** | `sensor.{student}_homework_due_today` | `mdi:alarm-check` | 15 minutes | Homework due today |
+| **Homework Due Tomorrow** | `sensor.{student}_homework_due_tomorrow` | `mdi:calendar-arrow-right` | 15 minutes | Homework due tomorrow |
+| **Homework Overdue** | `sensor.{student}_homework_overdue` | `mdi:alarm-snooze` | 15 minutes | Overdue homework |
+| **Homework Upcoming** | `sensor.{student}_homework_upcoming` | `mdi:notebook-edit-outline` | 15 minutes | Upcoming homework |
 
-### Klassenarbeiten-Sensoren
-| Sensor | Entity ID | Icon | Update-Intervall | Beschreibung |
-|--------|-----------|------|------------------|--------------|
-| **Exams Today** | `sensor.{student}_exams_today` | `mdi:clipboard-alert` | 15 Minuten | Klassenarbeiten heute |
-| **Exams This Week** | `sensor.{student}_exams_this_week` | `mdi:calendar-week-begin` | 1 Stunde | Klassenarbeiten diese Woche |
-| **Exams Next Week** | `sensor.{student}_exams_next_week` | `mdi:calendar-week-begin` | 1 Stunde | Klassenarbeiten nächste Woche |
-| **Exams Upcoming** | `sensor.{student}_exams_upcoming` | `mdi:clipboard-clock` | 1 Stunde | Kommende Klassenarbeiten |
+### Exam Sensors
+| Sensor | Entity ID | Icon | Update Interval | Description |
+|--------|-----------|------|-----------------|-------------|
+| **Exams Today** | `sensor.{student}_exams_today` | `mdi:clipboard-alert` | 15 minutes | Exams today |
+| **Exams This Week** | `sensor.{student}_exams_this_week` | `mdi:calendar-week-begin` | 1 hour | Exams this week |
+| **Exams Next Week** | `sensor.{student}_exams_next_week` | `mdi:calendar-week-begin` | 1 hour | Exams next week |
+| **Exams Upcoming** | `sensor.{student}_exams_upcoming` | `mdi:clipboard-clock` | 1 hour | Upcoming exams |
 
-## 🔍 Sensor-Details
+## 🔍 Sensor Details
 
 ### 1. Current Lesson Sensor
 
 **Entity ID**: `sensor.{student_name}_current_lesson`
 
-**Zweck**: Zeigt die aktuell laufende Unterrichtsstunde an.
+**Purpose**: Shows the currently running class period.
 
-**State-Werte**:
-- `"Mathematik"` - Name des aktuellen Fachs
-- `"Pause"` - Wenn gerade Pause ist
-- `"Kein Unterricht"` - Außerhalb der Schulzeit
-- `"Unbekannt"` - Bei Datenfehlern
+**State Values**:
+- `"Mathematics"` - Name of current subject
+- `"Break"` - When it's break time
+- `"No Class"` - Outside school hours
+- `"Unknown"` - On data errors
 
-**Attribute**:
+**Attributes**:
 ```json
 {
-  "subject": "Mathematik",
-  "teacher": "Herr Schmidt",
+  "subject": "Mathematics",
+  "teacher": "Mr. Schmidt",
   "room": "R204",
   "start_time": "09:45",
   "end_time": "10:30",
@@ -102,7 +102,7 @@ Alle Stunden-Sensoren verwenden jetzt das gleiche Attributformat:
 }
 ```
 
-**Implementierung**:
+**Implementation**:
 ```python
 def _get_current_lesson(self):
     """Get the current lesson."""
@@ -119,25 +119,25 @@ def _get_current_lesson(self):
         if start_time <= current_time <= end_time:
             return lesson["lesson"]["subject"]
     
-    return "Kein Unterricht"
+    return "No Class"
 ```
 
 ### 2. Next Lesson Sensor
 
 **Entity ID**: `sensor.{student_name}_next_lesson`
 
-**Zweck**: Zeigt die nächste anstehende Unterrichtsstunde an.
+**Purpose**: Shows the next upcoming class period.
 
-**State-Werte**:
-- `"Deutsch (in 15 min)"` - Nächstes Fach mit Zeitangabe
-- `"Morgen: Englisch (08:00)"` - Nächster Tag
-- `"Kein weiterer Unterricht heute"` - Ende des Schultags
+**State Values**:
+- `"German (in 15 min)"` - Next subject with time indication
+- `"Tomorrow: English (08:00)"` - Next day
+- `"No more classes today"` - End of school day
 
-**Attribute**:
+**Attributes**:
 ```json
 {
-  "subject": "Deutsch",
-  "teacher": "Frau Müller",
+  "subject": "German",
+  "teacher": "Mrs. Müller",
   "room": "R105",
   "start_time": "10:45",
   "end_time": "11:30",
@@ -152,13 +152,13 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_todays_lessons`
 
-**Zweck**: Übersicht über alle Stunden des aktuellen Tages.
+**Purpose**: Overview of all lessons for the current day.
 
-**State-Werte**:
-- `"6"` - Anzahl der heutigen Stunden
-- `"0"` - Kein Unterricht heute (Wochenende/Feiertag)
+**State Values**:
+- `"6"` - Number of lessons today
+- `"0"` - No classes today (weekend/holiday)
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "lessons": [
@@ -178,9 +178,9 @@ def _get_current_lesson(self):
       "class_hour": "1"
     },
     {
-      "subject": "Mathematik",
+      "subject": "Mathematics",
       "subject_abbreviation": "M",
-      "subject_sanitized": "Mathematik",
+      "subject_sanitized": "Mathematics",
       "time": "08:50-09:35",
       "room": "R204",
       "teacher": "Sch",
@@ -188,7 +188,7 @@ def _get_current_lesson(self):
       "teacher_firstname": "Hans",
       "is_substitution": true,
       "type": "changedLesson",
-      "comment": "Vertretung",
+      "comment": "Substitution",
       "date": "2025-09-16",
       "class_hour": "2"
     }
@@ -201,13 +201,13 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_todays_changes`
 
-**Zweck**: Zeigt alle Vertretungen und Änderungen für den aktuellen Tag.
+**Purpose**: Shows all substitutions and changes for the current day.
 
-**State-Werte**:
-- `"2"` - Anzahl der Vertretungen heute
-- `"0"` - Keine Vertretungen
+**State Values**:
+- `"2"` - Number of substitutions today
+- `"0"` - No substitutions
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "changes": [
@@ -222,15 +222,15 @@ def _get_current_lesson(self):
       "teacher_firstname": "Julia-Felicitas",
       "is_substitution": true,
       "type": "changedLesson",
-      "comment": "Vertretung für Frau Weber",
+      "comment": "Substitution for Mrs. Weber",
       "date": "2025-09-16",
       "class_hour": "1",
       "original_teacher": "Web"
     },
     {
-      "subject": "Sport",
-      "subject_abbreviation": "Sp",
-      "subject_sanitized": "Sport",
+      "subject": "Physical Education",
+      "subject_abbreviation": "PE",
+      "subject_sanitized": "Physical Education",
       "time": "13:15-14:00",
       "room": "",
       "teacher": "",
@@ -238,7 +238,7 @@ def _get_current_lesson(self):
       "teacher_firstname": "",
       "is_substitution": false,
       "type": "cancelledLesson",
-      "comment": "Ausfall wegen Hallensanierung",
+      "comment": "Cancelled due to gym renovation",
       "date": "2025-09-16",
       "class_hour": "6"
     }
@@ -251,21 +251,21 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_next_school_day`
 
-**Zweck**: Informationen über den nächsten Schultag (überspringt Wochenenden).
+**Purpose**: Information about the next school day (skips weekends).
 
-**State-Werte**:
-- `"Montag, 16.09.2025"` - Nächster Schultag
-- `"Heute"` - Wenn heute noch Unterricht ist
+**State Values**:
+- `"Monday, 16.09.2025"` - Next school day
+- `"Today"` - If there are still classes today
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "date": "2025-09-16",
-  "day_name": "Montag",
+  "day_name": "Monday",
   "days_until": 2,
   "first_lesson": {
-    "subject": "Mathematik",
-    "teacher": "Herr Schmidt",
+    "subject": "Mathematics",
+    "teacher": "Mr. Schmidt",
     "start_time": "08:00",
     "room": "R204"
   },
@@ -279,13 +279,13 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_this_week`
 
-**Zweck**: Vollständiger Stundenplan für die aktuelle Woche.
+**Purpose**: Complete schedule for the current week.
 
-**State-Werte**:
-- `"32"` - Gesamtanzahl Stunden diese Woche
-- `"0"` - Keine Stunden (Ferien)
+**State Values**:
+- `"32"` - Total number of lessons this week
+- `"0"` - No lessons (holidays)
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "week_start": "2025-09-14",
@@ -294,13 +294,13 @@ def _get_current_lesson(self):
   "school_days": [
     {
       "date": "2025-09-14",
-      "day_name": "Montag",
+      "day_name": "Monday",
       "lessons_count": 6,
       "has_changes": false
     },
     {
       "date": "2025-09-15",
-      "day_name": "Dienstag", 
+      "day_name": "Tuesday", 
       "lessons_count": 7,
       "has_changes": true
     }
@@ -308,10 +308,10 @@ def _get_current_lesson(self):
   "total_lessons": 32,
   "total_changes": 3,
   "subjects_summary": {
-    "Mathematik": 5,
-    "Deutsch": 4,
-    "Englisch": 3,
-    "Geschichte": 2
+    "Mathematics": 5,
+    "German": 4,
+    "English": 3,
+    "History": 2
   }
 }
 ```
@@ -320,26 +320,26 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_next_week`
 
-**Zweck**: Stundenplan-Vorschau für die kommende Woche.
+**Purpose**: Schedule preview for the upcoming week.
 
-**State-Werte**:
-- `"35"` - Anzahl Stunden nächste Woche
-- `"Ferien"` - Wenn Ferien sind
+**State Values**:
+- `"35"` - Number of lessons next week
+- `"Holidays"` - When on vacation
 
-**Attribute**: Ähnlich wie "This Week", aber für die folgende Woche.
+**Attributes**: Similar to "This Week", but for the following week.
 
 ### 8. Changes Detected Sensor
 
 **Entity ID**: `sensor.{student_name}_changes_detected`
 
-**Zweck**: Erkennt Änderungen im Stundenplan und benachrichtigt darüber.
+**Purpose**: Detects schedule changes and notifies about them.
 
-**State-Werte**:
-- `"Neue Änderungen"` - Wenn Änderungen erkannt wurden
-- `"Keine Änderungen"` - Alles unverändert
-- `"Erstmalig geladen"` - Bei erstem Laden
+**State Values**:
+- `"New Changes"` - When changes are detected
+- `"No Changes"` - Everything unchanged
+- `"Initially Loaded"` - On first load
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "last_check": "2025-09-14T10:30:00",
@@ -349,51 +349,51 @@ def _get_current_lesson(self):
       "type": "substitution_added",
       "date": "2025-09-15",
       "class_hour": "3",
-      "subject": "Mathematik",
-      "old_teacher": "Herr Schmidt",
-      "new_teacher": "Frau Weber",
-      "reason": "Fortbildung"
+      "subject": "Mathematics",
+      "old_teacher": "Mr. Schmidt",
+      "new_teacher": "Mrs. Weber",
+      "reason": "Training"
     },
     {
       "type": "lesson_cancelled",
       "date": "2025-09-16",
       "class_hour": "6",
-      "subject": "Sport",
-      "reason": "Hallensanierung"
+      "subject": "Physical Education",
+      "reason": "Gym renovation"
     }
   ],
   "total_new_changes": 2
 }
 ```
 
-## 📚 Hausaufgaben-Sensoren
+## 📚 Homework Sensors
 
 ### 9. Homework Due Today Sensor
 
 **Entity ID**: `sensor.{student_name}_homework_due_today`
 
-**Zweck**: Zeigt die Anzahl der heute fälligen Hausaufgaben an.
+**Purpose**: Shows the number of homework assignments due today.
 
-**State-Werte**:
-- `"3"` - Anzahl der heute fälligen Hausaufgaben
-- `"0"` - Keine Hausaufgaben heute fällig
+**State Values**:
+- `"3"` - Number of homework assignments due today
+- `"0"` - No homework due today
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "homeworks": [
     {
       "id": 12345,
-      "subject": "Mathematik",
-      "homework": "Aufgaben S. 45, Nr. 1-10",
+      "subject": "Mathematics",
+      "homework": "Problems p. 45, No. 1-10",
       "date": "2025-09-14",
-      "teacher": "Herr Schmidt",
+      "teacher": "Mr. Schmidt",
       "completed": false,
       "days_overdue": 0
     }
   ],
   "count": 3,
-  "subjects": ["Mathematik", "Deutsch", "Englisch"]
+  "subjects": ["Mathematics", "German", "English"]
 }
 ```
 
@@ -401,32 +401,32 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_homework_due_tomorrow`
 
-**Zweck**: Zeigt die Anzahl der morgen fälligen Hausaufgaben an.
+**Purpose**: Shows the number of homework assignments due tomorrow.
 
-**State-Werte**:
-- `"2"` - Anzahl der morgen fälligen Hausaufgaben
-- `"0"` - Keine Hausaufgaben morgen fällig
+**State Values**:
+- `"2"` - Number of homework assignments due tomorrow
+- `"0"` - No homework due tomorrow
 
 ### 11. Homework Overdue Sensor
 
 **Entity ID**: `sensor.{student_name}_homework_overdue`
 
-**Zweck**: Zeigt überfällige Hausaufgaben an.
+**Purpose**: Shows overdue homework assignments.
 
-**State-Werte**:
-- `"1"` - Anzahl überfälliger Hausaufgaben
-- `"0"` - Keine überfälligen Hausaufgaben
+**State Values**:
+- `"1"` - Number of overdue homework assignments
+- `"0"` - No overdue homework
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "homeworks": [
     {
       "id": 12340,
-      "subject": "Geschichte",
-      "homework": "Referat vorbereiten",
+      "subject": "History",
+      "homework": "Prepare presentation",
       "date": "2025-09-12",
-      "teacher": "Frau Weber",
+      "teacher": "Mrs. Weber",
       "completed": false,
       "days_overdue": 2
     }
@@ -440,38 +440,38 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_homework_upcoming`
 
-**Zweck**: Zeigt kommende Hausaufgaben (nächste 7 Tage) an.
+**Purpose**: Shows upcoming homework assignments (next 7 days).
 
-**State-Werte**:
-- `"8"` - Anzahl kommender Hausaufgaben
-- `"0"` - Keine kommenden Hausaufgaben
+**State Values**:
+- `"8"` - Number of upcoming homework assignments
+- `"0"` - No upcoming homework
 
-## 📝 Klassenarbeiten-Sensoren
+## 📝 Exam Sensors
 
 ### 13. Exams Today Sensor
 
 **Entity ID**: `sensor.{student_name}_exams_today`
 
-**Zweck**: Zeigt heute anstehende Klassenarbeiten/Tests an.
+**Purpose**: Shows exams/tests scheduled for today.
 
-**State-Werte**:
-- `"2"` - Anzahl der heutigen Klassenarbeiten
-- `"0"` - Keine Klassenarbeiten heute
+**State Values**:
+- `"2"` - Number of exams today
+- `"0"` - No exams today
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "exams": [
     {
-      "subject": "Deutsch",
+      "subject": "German",
       "subject_abbreviation": "D",
-      "title": "Klassenarbeit",
+      "title": "Class Test",
       "date": "2025-09-14",
       "time": "11:41-12:26",
       "class_hour": "5",
       "room": "",
       "teacher": "",
-      "type": "Klassenarbeit",
+      "type": "Class Test",
       "type_color": "#c6dcef",
       "comment": "",
       "days_until": 0
@@ -485,18 +485,18 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_exams_this_week`
 
-**Zweck**: Zeigt alle Klassenarbeiten dieser Woche an.
+**Purpose**: Shows all exams for this week.
 
-**State-Werte**:
-- `"3"` - Anzahl der Klassenarbeiten diese Woche
-- `"0"` - Keine Klassenarbeiten diese Woche
+**State Values**:
+- `"3"` - Number of exams this week
+- `"0"` - No exams this week
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "exams": [
     {
-      "subject": "Mathematik",
+      "subject": "Mathematics",
       "subject_abbreviation": "M",
       "title": "Test",
       "date": "2025-09-16",
@@ -508,7 +508,7 @@ def _get_current_lesson(self):
     }
   ],
   "count": 3,
-  "subjects": ["Mathematik", "Deutsch", "Englisch"]
+  "subjects": ["Mathematics", "German", "English"]
 }
 ```
 
@@ -516,41 +516,41 @@ def _get_current_lesson(self):
 
 **Entity ID**: `sensor.{student_name}_exams_next_week`
 
-**Zweck**: Zeigt Klassenarbeiten der nächsten Woche an.
+**Purpose**: Shows exams for next week.
 
 ### 16. Exams Upcoming Sensor
 
 **Entity ID**: `sensor.{student_name}_exams_upcoming`
 
-**Zweck**: Zeigt alle kommenden Klassenarbeiten (nächste 30 Tage) an.
+**Purpose**: Shows all upcoming exams (next 30 days).
 
-**State-Werte**:
-- `"5"` - Anzahl kommender Klassenarbeiten
-- `"0"` - Keine kommenden Klassenarbeiten
+**State Values**:
+- `"5"` - Number of upcoming exams
+- `"0"` - No upcoming exams
 
-**Attribute**:
+**Attributes**:
 ```json
 {
   "exams": [
     {
-      "subject": "Englisch",
-      "title": "Vokabeltest",
+      "subject": "English",
+      "title": "Vocabulary Test",
       "date": "2025-09-20",
       "time": "10:45-11:30",
-      "type": "Lernkontrolle",
+      "type": "Quiz",
       "days_until": 6,
       "is_next_exam": true
     }
   ],
   "count": 5,
-  "subjects": ["Englisch", "Physik", "Chemie"],
+  "subjects": ["English", "Physics", "Chemistry"],
   "next_exam_date": "2025-09-20"
 }
 ```
 
-## 🔧 Sensor-Implementierung
+## 🔧 Sensor Implementation
 
-### Basis-Sensor-Klasse
+### Base Sensor Class
 
 ```python
 class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
@@ -601,7 +601,7 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         return student_data.get("schedule", [])
 ```
 
-### Sensor-spezifische Implementierungen
+### Sensor-Specific Implementations
 
 ```python
 @property
@@ -633,90 +633,90 @@ def extra_state_attributes(self):
         return self._get_current_lesson_attributes()
     elif self.sensor_type == "next_lesson":
         return self._get_next_lesson_attributes()
-    # ... weitere Implementierungen
+    # ... more implementations
     
     return {}
 ```
 
-## 📱 Verwendung in Home Assistant
+## 📱 Usage in Home Assistant
 
-### Dashboard-Integration
+### Dashboard Integration
 
 ```yaml
-# Lovelace Dashboard Konfiguration
+# Lovelace Dashboard Configuration
 type: entities
 title: Schulmanager - Marc Cedric
 entities:
   - entity: sensor.name_of_child_current_lesson
-    name: Aktuelle Stunde
+    name: Current Lesson
   - entity: sensor.name_of_child_next_lesson
-    name: Nächste Stunde
+    name: Next Lesson
   - entity: sensor.name_of_child_todays_changes
-    name: Heutige Vertretungen
+    name: Today's Changes
 ```
 
-### Automatisierungen
+### Automations
 
 ```yaml
-# Benachrichtigung bei Vertretungen
+# Notification for substitutions
 automation:
-  - alias: "Schulmanager - Vertretung erkannt"
+  - alias: "Schulmanager - Substitution detected"
     trigger:
       - platform: state
         entity_id: sensor.name_of_child_changes_detected
-        to: "Neue Änderungen"
+        to: "New Changes"
     action:
       - service: notify.mobile_app
         data:
-          title: "Stundenplan-Änderung"
+          title: "Schedule Change"
           message: >
-            Neue Vertretung für {{ trigger.to_state.attributes.student_name }}:
+            New substitution for {{ trigger.to_state.attributes.student_name }}:
             {{ trigger.to_state.attributes.changes[0].subject }} 
-            am {{ trigger.to_state.attributes.changes[0].date }}
+            on {{ trigger.to_state.attributes.changes[0].date }}
 ```
 
-### Template-Sensoren
+### Template Sensors
 
 ```yaml
-# Template für nächste Stunde mit Countdown
+# Template for next lesson with countdown
 template:
   - sensor:
-      - name: "Nächste Stunde Countdown"
+      - name: "Next Lesson Countdown"
         state: >
           {% set next_lesson = states('sensor.name_of_child_next_lesson') %}
           {% set minutes = state_attr('sensor.name_of_child_next_lesson', 'minutes_until') %}
           {% if minutes is not none and minutes > 0 %}
-            {{ next_lesson }} in {{ minutes }} Minuten
+            {{ next_lesson }} in {{ minutes }} minutes
           {% else %}
             {{ next_lesson }}
           {% endif %}
 ```
 
-## 🔄 Update-Strategien
+## 🔄 Update Strategies
 
-### Intelligente Updates
+### Intelligent Updates
 
 ```python
 async def _async_update_data(self):
     """Update data with intelligent scheduling."""
     now = datetime.now()
     
-    # Schnellere Updates während Schulzeit
+    # Faster updates during school hours
     if self._is_school_time(now):
         # Update current/next lesson every 5 minutes
         if now.minute % 5 == 0:
             await self._update_current_lessons()
     
-    # Normale Updates alle 15 Minuten
+    # Normal updates every 15 minutes
     if now.minute % 15 == 0:
         await self._update_daily_schedule()
     
-    # Wöchentliche Updates stündlich
+    # Weekly updates hourly
     if now.minute == 0:
         await self._update_weekly_schedule()
 ```
 
-### Caching-Mechanismus
+### Caching Mechanism
 
 ```python
 class ScheduleCache:
@@ -740,9 +740,9 @@ class ScheduleCache:
         self._cache_timestamps[key] = datetime.now()
 ```
 
-## 🚨 Fehlerbehandlung
+## 🚨 Error Handling
 
-### Sensor-Verfügbarkeit
+### Sensor Availability
 
 ```python
 @property
@@ -759,13 +759,13 @@ def native_value(self):
     """Return the native value with error handling."""
     try:
         if not self.available:
-            return "Nicht verfügbar"
+            return "Not Available"
         
         return self._calculate_sensor_value()
         
     except Exception as e:
         _LOGGER.error("Error calculating sensor value for %s: %s", self.entity_id, e)
-        return "Fehler"
+        return "Error"
 ```
 
 ### Graceful Degradation
@@ -781,12 +781,12 @@ def _get_current_lesson_safe(self):
         # Fallback: Check if we have any lesson data for today
         today_lessons = self._get_todays_lessons_safe()
         if today_lessons:
-            return "Stundenplan verfügbar"
+            return "Schedule Available"
         
-        return "Keine Daten"
+        return "No Data"
 ```
 
-## 📊 Performance-Optimierung
+## 📊 Performance Optimization
 
 ### Lazy Loading
 
@@ -818,15 +818,15 @@ def _update_all_sensors_batch(self):
         'current_lesson': self._calculate_current_lesson(schedule_data, now),
         'next_lesson': self._calculate_next_lesson(schedule_data, now),
         'todays_lessons': self._calculate_todays_lessons(schedule_data, now.date()),
-        # ... weitere Berechnungen
+        # ... more calculations
     }
     
     return results
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [Integration Architecture](Integration_Architecture.md) - Gesamtarchitektur
-- [Custom Card Documentation](Custom_Card_Documentation.md) - UI-Integration
-- [Configuration Guide](Configuration_Guide.md) - Konfiguration
-- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problemlösungen
+- [Integration Architecture](Integration_Architecture.md) - Overall architecture
+- [Custom Card Documentation](Custom_Card_Documentation.md) - UI integration
+- [Configuration Guide](Configuration_Guide.md) - Configuration
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solving

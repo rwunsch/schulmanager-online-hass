@@ -1,18 +1,18 @@
-# Schulmanager Online API - Detaillierte Analyse
+# Schulmanager Online API - Detailed Analysis
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Die Schulmanager Online API ist eine REST-API, die über HTTPS kommuniziert und JWT-Token für die Authentifizierung verwendet. Die API erfordert eine spezielle PBKDF2-SHA512 Hash-Authentifizierung.
+The Schulmanager Online API is a REST API that communicates over HTTPS and uses JWT tokens for authentication. The API requires special PBKDF2-SHA512 hash authentication.
 
-## 🔗 API-Endpunkte
+## 🔗 API Endpoints
 
 ### Base URLs
 - **Login/Auth**: `https://login.schulmanager-online.de/api/`
 - **API Calls**: `https://login.schulmanager-online.de/api/calls`
 
-### Authentifizierung-Endpunkte
+### Authentication Endpoints
 
-#### 1. Salt abrufen
+#### 1. Get Salt
 ```http
 POST /api/salt
 Content-Type: application/json
@@ -29,7 +29,7 @@ Content-Type: application/json
 "random_salt_string_here"
 ```
 
-#### 2. Login mit Hash
+#### 2. Login with Hash
 ```http
 POST /api/login
 Content-Type: application/json
@@ -67,11 +67,11 @@ Content-Type: application/json
 }
 ```
 
-### Daten-Endpunkte
+### Data Endpoints
 
-#### 3. API Calls (Hauptendpunkt)
+#### 3. API Calls (Main Endpoint)
 
-**Stundenplan abrufen:**
+**Get Schedule:**
 ```http
 POST /api/calls
 Authorization: Bearer <jwt_token>
@@ -99,7 +99,7 @@ Content-Type: application/json
 }
 ```
 
-**Hausaufgaben abrufen:**
+**Get Homework:**
 ```http
 POST /api/calls
 Authorization: Bearer <jwt_token>
@@ -119,7 +119,7 @@ Content-Type: application/json
 }
 ```
 
-**Klassenarbeiten abrufen:**
+**Get Exams:**
 ```http
 POST /api/calls
 Authorization: Bearer <jwt_token>
@@ -141,21 +141,21 @@ Content-Type: application/json
 }
 ```
 
-## 🔐 Authentifizierung im Detail
+## 🔐 Authentication Details
 
 ### PBKDF2-SHA512 Hashing
 
-Die API verwendet eine spezielle Hash-Funktion basierend auf PBKDF2-SHA512:
+The API uses a special hash function based on PBKDF2-SHA512:
 
-**Parameter:**
-- **Algorithm**: PBKDF2 mit SHA-512
-- **Iterationen**: 99.999
-- **Output-Länge**: 512 Bytes (4096 Bits)
-- **Hex-Länge**: 1024 Zeichen
-- **Salt-Encoding**: UTF-8 (nicht Hex!)
-- **Password-Encoding**: UTF-8
+**Parameters:**
+- **Algorithm**: PBKDF2 with SHA-512
+- **Iterations**: 99,999
+- **Output Length**: 512 bytes (4096 bits)
+- **Hex Length**: 1024 characters
+- **Salt Encoding**: UTF-8 (not Hex!)
+- **Password Encoding**: UTF-8
 
-**JavaScript-Implementierung (Original):**
+**JavaScript Implementation (Original):**
 ```javascript
 const hashBuffer = await crypto.subtle.deriveBits(
   {
@@ -175,7 +175,7 @@ const hashBuffer = await crypto.subtle.deriveBits(
 );
 ```
 
-**Python-Implementierung:**
+**Python Implementation:**
 ```python
 def _generate_salted_hash(self, password: str, salt: str) -> str:
     """Generate salted hash using PBKDF2-SHA512"""
@@ -188,37 +188,37 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 
 ### JWT Token Management
 
-**Token-Eigenschaften:**
-- **Typ**: JWT (JSON Web Token)
-- **Gültigkeit**: 1 Stunde
-- **Verwendung**: Authorization Header als Bearer Token
-- **Erneuerung**: Automatisch bei Ablauf
+**Token Properties:**
+- **Type**: JWT (JSON Web Token)
+- **Validity**: 1 hour
+- **Usage**: Authorization Header as Bearer Token
+- **Renewal**: Automatic on expiry
 
-## 📊 API-Module und Endpunkte
+## 📊 API Modules and Endpoints
 
 ### Schedules Module
-- **`get-actual-lessons`**: Aktuelle Stunden abrufen
-- **`get-class-hours`**: Schulstunden-Schema abrufen
+- **`get-actual-lessons`**: Get current lessons
+- **`get-class-hours`**: Get school hour schema
 
 ### Classbook Module
-- **`get-homework`**: Hausaufgaben für einen Schüler abrufen
+- **`get-homework`**: Get homework for a student
 
 ### Exams Module
-- **`get-exams`**: Klassenarbeiten/Tests für einen Schüler abrufen
+- **`get-exams`**: Get exams/tests for a student
 
 ### Grades Module (Experimental)
-- **`get-grades`**: Noten für einen Schüler abrufen
+- **`get-grades`**: Get grades for a student
 
-### Verfügbare Parameter
-- **`student`**: Schüler-Objekt mit ID, Name, Geschlecht, Klassen-ID
-- **`start`**: Start-Datum (ISO Format: YYYY-MM-DD)
-- **`end`**: End-Datum (ISO Format: YYYY-MM-DD)
+### Available Parameters
+- **`student`**: Student object with ID, name, gender, class ID
+- **`start`**: Start date (ISO format: YYYY-MM-DD)
+- **`end`**: End date (ISO format: YYYY-MM-DD)
 
-## 🔄 API Response-Struktur
+## 🔄 API Response Structure
 
-**WICHTIG**: Alle API-Responses verwenden `"results"` statt `"responses"` als Hauptfeld!
+**IMPORTANT**: All API responses use `"results"` instead of `"responses"` as the main field!
 
-### Stundenplan Response
+### Schedule Response
 ```json
 {
   "results": [
@@ -235,8 +235,8 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
           },
           "lesson": {
             "id": 123456,
-            "subject": "Mathematik",
-            "teacher": "Herr Schmidt",
+            "subject": "Mathematics",
+            "teacher": "Mr. Schmidt",
             "room": "R204"
           },
           "substitution": null
@@ -247,7 +247,7 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 }
 ```
 
-### Hausaufgaben Response
+### Homework Response
 ```json
 {
   "results": [
@@ -256,19 +256,19 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
       "data": [
         {
           "id": 12345,
-          "subject": "Mathematik",
-          "homework": "Aufgaben S. 45, Nr. 1-10",
+          "subject": "Mathematics",
+          "homework": "Problems p. 45, No. 1-10",
           "date": "2025-09-16",
-          "teacher": "Herr Schmidt",
+          "teacher": "Mr. Schmidt",
           "completed": false,
           "createdAt": "2025-09-11T08:30:00.000Z"
         },
         {
           "id": 12346,
-          "subject": "Deutsch",
-          "homework": "Gedicht auswendig lernen",
+          "subject": "German",
+          "homework": "Memorize poem",
           "date": "2025-09-17",
-          "teacher": "Frau Müller",
+          "teacher": "Mrs. Müller",
           "completed": true,
           "createdAt": "2025-09-10T14:20:00.000Z"
         }
@@ -278,7 +278,7 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 }
 ```
 
-### Klassenarbeiten Response
+### Exams Response
 ```json
 {
   "results": [
@@ -289,12 +289,12 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
           "id": 3163060,
           "subject": {
             "id": 255645,
-            "name": "Deutsch",
+            "name": "German",
             "abbreviation": "D"
           },
           "type": {
             "id": 2224,
-            "name": "Klassenarbeit",
+            "name": "Class Test",
             "color": "#c6dcef",
             "visibleForStudents": true
           },
@@ -315,7 +315,7 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 }
 ```
 
-### Fehler-Response
+### Error Response
 ```json
 {
   "results": [
@@ -327,70 +327,70 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 }
 ```
 
-## 🚨 Häufige API-Probleme
+## 🚨 Common API Problems
 
-### 1. Authentifizierung fehlgeschlagen (401)
-- **Ursache**: Falscher Hash oder abgelaufener Token
-- **Lösung**: Hash-Parameter überprüfen, Token erneuern
+### 1. Authentication Failed (401)
+- **Cause**: Wrong hash or expired token
+- **Solution**: Check hash parameters, renew token
 
-### 2. Schülerdaten nicht gefunden (400)
-- **Ursache**: Falsche API-Methode oder fehlende Berechtigung
-- **Lösung**: Schülerdaten aus Login-Response extrahieren
+### 2. Student Data Not Found (400)
+- **Cause**: Wrong API method or missing permission
+- **Solution**: Extract student data from login response
 
-### 3. Salt-Abruf fehlgeschlagen
-- **Ursache**: Fehlende Parameter oder falsche Email
-- **Lösung**: `mobileApp: false` Parameter hinzufügen
+### 3. Salt Retrieval Failed
+- **Cause**: Missing parameters or wrong email
+- **Solution**: Add `mobileApp: false` parameter
 
-### 4. Schedule/Letters API 400 Bad Request (GELÖST!)
-- **Ursache**: Fehlender `bundleVersion` Parameter in API-Requests
-- **Lösung**: `"bundleVersion": "3505280ee7"` zu allen API-Calls hinzufügen
-- **bundleVersion Quelle**: Embedded in JavaScript bundle file (z.B. `main-SUJO2BNM.js`)
-- **Dynamische Erkennung**: Integration erkennt bundleVersion automatisch durch:
-  1. Abrufen der Haupt-HTML-Seite von `https://login.schulmanager-online.de`
-  2. Extrahieren der JavaScript-Bundle-URLs aus dem HTML
-  3. Suchen nach bundleVersion in den JavaScript-Dateien
-  4. Caching der erkannten Version für 1 Stunde
-- **Fallback**: Bei Erkennungsfehlern wird die bekannte Version `"3505280ee7"` verwendet
-- **Symptome (vorher)**: 
-  - Authentifizierung funktioniert perfekt
-  - Homework und Exams APIs funktionieren (hatten bundleVersion in Standalone-Tests)
-  - Schedule und Letters APIs gaben identische 400-Fehler zurück
-  - Server-Response: Plain text "Bad Request" statt JSON
-- **Status**: ✅ BEHOBEN + DYNAMISCHE ERKENNUNG IMPLEMENTIERT
-- **Zusätzliche Fixes**:
-  1. Response-Struktur von `"responses"` auf `"results"` geändert
-  2. Alle API-Calls benötigen bundleVersion Parameter
-  3. Standalone-Scripts benötigen korrekte Passwort-Credentials
-  4. Dynamische bundleVersion-Erkennung implementiert
+### 4. Schedule/Letters API 400 Bad Request (SOLVED!)
+- **Cause**: Missing `bundleVersion` parameter in API requests
+- **Solution**: Add `"bundleVersion": "3505280ee7"` to all API calls
+- **bundleVersion Source**: Embedded in JavaScript bundle file (e.g., `main-SUJO2BNM.js`)
+- **Dynamic Detection**: Integration detects bundleVersion automatically by:
+  1. Fetching the main HTML page from `https://login.schulmanager-online.de`
+  2. Extracting JavaScript bundle URLs from HTML
+  3. Searching for bundleVersion in JavaScript files
+  4. Caching detected version for 1 hour
+- **Fallback**: When detection fails, uses known version `"3505280ee7"`
+- **Symptoms (before)**: 
+  - Authentication works perfectly
+  - Homework and Exams APIs work (had bundleVersion in standalone tests)
+  - Schedule and Letters APIs returned identical 400 errors
+  - Server response: Plain text "Bad Request" instead of JSON
+- **Status**: ✅ FIXED + DYNAMIC DETECTION IMPLEMENTED
+- **Additional Fixes**:
+  1. Response structure changed from `"responses"` to `"results"`
+  2. All API calls need bundleVersion parameter
+  3. Standalone scripts need correct password credentials
+  4. Dynamic bundleVersion detection implemented
 
-## 🔍 Reverse Engineering Erkenntnisse
+## 🔍 Reverse Engineering Insights
 
-### JavaScript-Dateien analysiert:
-- **`chunk-M5BNGULW.js`**: Enthält Hash-Funktion `SWe`
-- **`main-SUJO2BNM.js`**: Enthält Login-Logic
+### JavaScript Files Analyzed:
+- **`chunk-M5BNGULW.js`**: Contains hash function `SWe`
+- **`main-SUJO2BNM.js`**: Contains login logic
 
-### Wichtige Erkenntnisse:
-1. **Salt wird als String zurückgegeben**, nicht als JSON-Objekt
-2. **Hash-Iterationen sind 99.999**, nicht 10.000
-3. **Output-Länge ist 512 Bytes**, nicht 256
-4. **Salt-Encoding ist UTF-8**, nicht Hex
+### Important Findings:
+1. **Salt is returned as string**, not as JSON object
+2. **Hash iterations are 99,999**, not 10,000
+3. **Output length is 512 bytes**, not 256
+4. **Salt encoding is UTF-8**, not Hex
 
-## 📝 API-Versionierung
+## 📝 API Versioning
 
-- **Bundle Version**: `3505280ee7` (aktuell)
-- **API-Version**: Nicht explizit versioniert
-- **Kompatibilität**: Rückwärtskompatibel
+- **Bundle Version**: `3505280ee7` (current)
+- **API Version**: Not explicitly versioned
+- **Compatibility**: Backward compatible
 
-## 🔧 Implementierungs-Hinweise
+## 🔧 Implementation Notes
 
-1. **Session Management**: Verwende `aiohttp.ClientSession` für Connection Pooling
-2. **Error Handling**: Implementiere Retry-Logic für temporäre Fehler
-3. **Rate Limiting**: Beachte API-Limits (nicht dokumentiert)
-4. **Caching**: Cache Schülerdaten aus Login-Response
-5. **Logging**: Detailliertes Logging für Debugging
+1. **Session Management**: Use `aiohttp.ClientSession` for connection pooling
+2. **Error Handling**: Implement retry logic for temporary errors
+3. **Rate Limiting**: Observe API limits (not documented)
+4. **Caching**: Cache student data from login response
+5. **Logging**: Detailed logging for debugging
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [Authentication Guide](Authentication_Guide.md) - Detaillierte Authentifizierung
-- [API Implementation](API_Implementation.md) - Python-Implementierung
-- [Troubleshooting](Troubleshooting_Guide.md) - Problemlösungen
+- [Authentication Guide](Authentication_Guide.md) - Detailed authentication
+- [API Implementation](API_Implementation.md) - Python implementation
+- [Troubleshooting](Troubleshooting_Guide.md) - Problem solutions

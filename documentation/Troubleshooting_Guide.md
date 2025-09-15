@@ -1,43 +1,43 @@
 # Troubleshooting Guide
 
-## 🚨 Häufige Probleme und Lösungen
+## 🚨 Common Problems and Solutions
 
-### 🔐 Authentifizierungs-Probleme
+### 🔐 Authentication Problems
 
 #### Problem: "Authentication failed: Login failed: 401"
 
-**Symptome:**
-- Integration kann nicht konfiguriert werden
-- Fehler beim Setup in Home Assistant
-- Login schlägt fehl
+**Symptoms:**
+- Integration cannot be configured
+- Setup error in Home Assistant
+- Login fails
 
-**Mögliche Ursachen:**
-1. **Falsche Anmeldedaten**
-2. **Hash-Generierung fehlerhaft**
-3. **API-Parameter fehlen**
+**Possible Causes:**
+1. **Incorrect credentials**
+2. **Hash generation error**
+3. **Missing API parameters**
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Anmeldedaten überprüfen:**
+1. **Check credentials:**
    ```bash
-   # Test mit curl (aus Research/API-call_login-salted.txt)
+   # Test with curl (from Research/API-call_login-salted.txt)
    curl 'https://login.schulmanager-online.de/api/salt' \
      -H 'content-type: application/json' \
-     --data-raw '{"emailOrUsername":"IHRE_EMAIL","mobileApp":false,"institutionId":null}'
+     --data-raw '{"emailOrUsername":"YOUR_EMAIL","mobileApp":false,"institutionId":null}'
    ```
 
-2. **Hash-Parameter validieren:**
+2. **Validate hash parameters:**
    ```python
    # In test-scripts/test_corrected_hash.py
    python test-scripts/test_corrected_hash.py
    ```
 
-3. **API-Parameter prüfen:**
-   - `mobileApp: false` muss gesetzt sein
-   - `institutionId: null` verwenden
-   - Salt als UTF-8 encodieren, nicht als Hex
+3. **Check API parameters:**
+   - `mobileApp: false` must be set
+   - Use `institutionId: null`
+   - Encode salt as UTF-8, not as Hex
 
-**Debug-Logs aktivieren:**
+**Enable debug logs:**
 ```yaml
 # In configuration.yaml
 logger:
@@ -48,29 +48,29 @@ logger:
 
 #### Problem: "No salt received"
 
-**Symptome:**
-- Salt-Abruf schlägt fehl
-- 400 Bad Request beim Salt-Endpunkt
+**Symptoms:**
+- Salt retrieval fails
+- 400 Bad Request at salt endpoint
 
-**Lösung:**
+**Solution:**
 ```python
-# Korrekte Salt-Request Parameter
+# Correct salt request parameters
 payload = {
     "emailOrUsername": email,
-    "mobileApp": False,  # WICHTIG: Muss False sein!
+    "mobileApp": False,  # IMPORTANT: Must be False!
     "institutionId": None
 }
 ```
 
 #### Problem: "'str' object has no attribute 'get'"
 
-**Symptome:**
-- Fehler beim Salt-Parsing
-- Integration Setup bricht ab
+**Symptoms:**
+- Error during salt parsing
+- Integration setup aborts
 
-**Lösung:**
+**Solution:**
 ```python
-# Salt kann als String oder JSON zurückgegeben werden
+# Salt can be returned as string or JSON
 try:
     data = await response.json()
     if isinstance(data, str):
@@ -81,78 +81,78 @@ except Exception:
     salt = await response.text()
 ```
 
-### 👥 Schülerdaten-Probleme
+### 👥 Student Data Problems
 
 #### Problem: "No students found for this account"
 
-**Symptome:**
-- Login erfolgreich, aber keine Schüler gefunden
-- Integration Setup schlägt fehl
+**Symptoms:**
+- Login successful, but no students found
+- Integration setup fails
 
-**Mögliche Ursachen:**
-1. **Account hat keine Schüler-Berechtigung**
-2. **Schülerdaten nicht in Login-Response**
-3. **Falsche Datenextraktion**
+**Possible Causes:**
+1. **Account has no student permissions**
+2. **Student data not in login response**
+3. **Incorrect data extraction**
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Login-Response analysieren:**
+1. **Analyze login response:**
    ```python
-   # Debug-Ausgabe in api.py
+   # Debug output in api.py
    _LOGGER.debug("User data keys: %s", list(self.user_data.keys()))
    _LOGGER.debug("Associated parents: %s", self.user_data.get("associatedParents"))
    ```
 
-2. **Account-Typ überprüfen:**
-   - **Eltern-Account**: Schüler in `associatedParents[].student`
-   - **Schüler-Account**: Schüler in `associatedStudent`
-   - **Lehrer-Account**: Keine Schülerdaten verfügbar
+2. **Check account type:**
+   - **Parent account**: Students in `associatedParents[].student`
+   - **Student account**: Student in `associatedStudent`
+   - **Teacher account**: No student data available
 
-3. **Manuelle Überprüfung:**
+3. **Manual verification:**
    ```bash
-   # Test-Script ausführen
+   # Run test script
    cd test-scripts
    python test_corrected_hash.py
    ```
 
-### 📊 Sensor-Probleme
+### 📊 Sensor Problems
 
-#### Problem: Sensoren zeigen "Nicht verfügbar"
+#### Problem: Sensors show "Not Available"
 
-**Symptome:**
-- Alle Sensoren unavailable
-- Keine Daten in Attributen
+**Symptoms:**
+- All sensors unavailable
+- No data in attributes
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Coordinator-Status prüfen:**
+1. **Check coordinator status:**
    ```python
    # In Home Assistant Developer Tools > States
-   # Suche nach: sensor.{student_name}_*
+   # Search for: sensor.{student_name}_*
    ```
 
-2. **Update-Intervall überprüfen:**
+2. **Check update interval:**
    ```python
    # In coordinator.py
-   update_interval=timedelta(minutes=15)  # Standard-Intervall
+   update_interval=timedelta(minutes=15)  # Default interval
    ```
 
-3. **API-Verbindung testen:**
+3. **Test API connection:**
    ```bash
-   # Standalone-Test
+   # Standalone test
    cd test-scripts
    python standalone_api_test.py
    ```
 
-#### Problem: "Kein Unterricht" obwohl Schulzeit
+#### Problem: "No Class" despite being school hours
 
-**Symptome:**
-- Current Lesson zeigt falsche Werte
-- Zeitzone-Probleme
+**Symptoms:**
+- Current Lesson shows wrong values
+- Timezone problems
 
-**Lösung:**
+**Solution:**
 ```python
-# Zeitzone-Konfiguration prüfen
+# Check timezone configuration
 import datetime
 now = datetime.datetime.now()
 print(f"Current time: {now}")
@@ -163,62 +163,62 @@ homeassistant:
   time_zone: Europe/Berlin
 ```
 
-### 🔄 Update-Probleme
+### 🔄 Update Problems
 
-#### Problem: Daten werden nicht aktualisiert
+#### Problem: Data is not being updated
 
-**Symptome:**
-- Sensoren zeigen veraltete Daten
-- Keine automatischen Updates
+**Symptoms:**
+- Sensors show outdated data
+- No automatic updates
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Coordinator-Logs prüfen:**
+1. **Check coordinator logs:**
    ```bash
-   # Docker-Logs anzeigen
+   # Show Docker logs
    docker logs schulmanager-ha-test | grep -i schulmanager
    ```
 
-2. **Manuelles Update erzwingen:**
+2. **Force manual update:**
    ```python
    # In Home Assistant Developer Tools > Services
    # Service: homeassistant.update_entity
    # Entity: sensor.{student_name}_current_lesson
    ```
 
-3. **Token-Erneuerung prüfen:**
+3. **Check token renewal:**
    ```python
-   # Token sollte alle 55 Minuten erneuert werden
+   # Token should be renewed every 55 minutes
    _LOGGER.debug("Token expires at: %s", self.token_expires)
    ```
 
-### 🌐 Netzwerk-Probleme
+### 🌐 Network Problems
 
 #### Problem: "Connection timeout" / "Cannot connect"
 
-**Symptome:**
-- API-Calls schlagen fehl
-- Intermittierende Verbindungsfehler
+**Symptoms:**
+- API calls fail
+- Intermittent connection errors
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Netzwerk-Konnektivität testen:**
+1. **Test network connectivity:**
    ```bash
-   # DNS-Auflösung testen
+   # Test DNS resolution
    nslookup login.schulmanager-online.de
    
-   # HTTPS-Verbindung testen
+   # Test HTTPS connection
    curl -I https://login.schulmanager-online.de/api/salt
    ```
 
-2. **Timeout-Werte anpassen:**
+2. **Adjust timeout values:**
    ```python
    # In api.py
    timeout = aiohttp.ClientTimeout(total=30, connect=10)
    session = aiohttp.ClientSession(timeout=timeout)
    ```
 
-3. **Retry-Logic implementieren:**
+3. **Implement retry logic:**
    ```python
    async def _make_api_call_with_retry(self, requests, max_retries=3):
        for attempt in range(max_retries):
@@ -230,57 +230,57 @@ homeassistant:
                await asyncio.sleep(2 ** attempt)  # Exponential backoff
    ```
 
-### 🐳 Docker-Probleme
+### 🐳 Docker Problems
 
-#### Problem: Home Assistant Container startet nicht
+#### Problem: Home Assistant container won't start
 
-**Symptome:**
-- Container-Status: Exited
-- Port 8123 nicht erreichbar
+**Symptoms:**
+- Container status: Exited
+- Port 8123 not reachable
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Container-Logs prüfen:**
+1. **Check container logs:**
    ```bash
    docker logs schulmanager-ha-test
    ```
 
-2. **Konfigurationsfehler beheben:**
+2. **Fix configuration errors:**
    ```bash
-   # Konfiguration validieren
+   # Validate configuration
    docker run --rm -v $(pwd)/test-scripts/ha-config:/config \
      ghcr.io/home-assistant/home-assistant:stable \
      python -m homeassistant --script check_config --config /config
    ```
 
-3. **Port-Mapping korrigieren:**
+3. **Correct port mapping:**
    ```yaml
    # In docker-compose-fixed.yml
    ports:
-     - 8123:8123  # Explizites Port-Mapping
+     - 8123:8123  # Explicit port mapping
    ```
 
-#### Problem: Custom Integration nicht geladen
+#### Problem: Custom integration not loaded
 
-**Symptome:**
-- Integration nicht in Settings sichtbar
-- "Domain not found" Fehler
+**Symptoms:**
+- Integration not visible in Settings
+- "Domain not found" error
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Volume-Mapping prüfen:**
+1. **Check volume mapping:**
    ```bash
-   # Prüfen ob custom_components gemountet ist
+   # Check if custom_components is mounted
    docker exec schulmanager-ha-test ls -la /config/custom_components/
    ```
 
-2. **Integration neu laden:**
+2. **Reload integration:**
    ```bash
-   # Home Assistant neu starten
+   # Restart Home Assistant
    docker restart schulmanager-ha-test
    ```
 
-3. **Manifest validieren:**
+3. **Validate manifest:**
    ```json
    // custom_components/schulmanager_online/manifest.json
    {
@@ -295,23 +295,23 @@ homeassistant:
    }
    ```
 
-### 🎨 Custom Card Probleme
+### 🎨 Custom Card Problems
 
-#### Problem: Custom Card wird nicht angezeigt
+#### Problem: Custom card is not displayed
 
-**Symptome:**
-- "Custom element doesn't exist" Fehler
-- Leere Card in Dashboard
+**Symptoms:**
+- "Custom element doesn't exist" error
+- Empty card in dashboard
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Card-Registration prüfen:**
+1. **Check card registration:**
    ```javascript
-   // Browser-Konsole öffnen (F12)
+   // Open browser console (F12)
    console.log(customElements.get('schulmanager-schedule-card'));
    ```
 
-2. **Resource-Pfad korrigieren:**
+2. **Correct resource path:**
    ```yaml
    # In configuration.yaml
    lovelace:
@@ -320,50 +320,50 @@ homeassistant:
          type: module
    ```
 
-3. **Card-Konfiguration validieren:**
+3. **Validate card configuration:**
    ```yaml
-   # Dashboard-Card
+   # Dashboard card
    type: custom:schulmanager-schedule-card
    entity: sensor.name_of_child_current_lesson
    view: weekly_matrix
    ```
 
-### 🔧 Entwicklungs-Probleme
+### 🔧 Development Problems
 
-#### Problem: Test-Scripts schlagen fehl
+#### Problem: Test scripts fail
 
-**Symptome:**
+**Symptoms:**
 - ModuleNotFoundError
-- Import-Fehler
+- Import errors
 
-**Lösungsschritte:**
+**Solution Steps:**
 
-1. **Virtual Environment aktivieren:**
+1. **Activate virtual environment:**
    ```bash
    cd test-scripts
    python -m venv venv
    source venv/bin/activate  # Linux/Mac
-   # oder
+   # or
    venv\Scripts\activate     # Windows
    pip install -r requirements.txt
    ```
 
-2. **Python-Path korrigieren:**
+2. **Correct Python path:**
    ```python
-   # Am Anfang des Scripts
+   # At the beginning of the script
    import sys
    import os
    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
    ```
 
-3. **Dependencies installieren:**
+3. **Install dependencies:**
    ```bash
    pip install aiohttp python-dateutil
    ```
 
-## 🔍 Debug-Strategien
+## 🔍 Debug Strategies
 
-### Logging aktivieren
+### Enable Logging
 
 ```yaml
 # configuration.yaml
@@ -375,10 +375,10 @@ logger:
     custom_components.schulmanager_online.coordinator: debug
 ```
 
-### API-Calls verfolgen
+### Track API Calls
 
 ```python
-# In api.py - Temporär für Debugging
+# In api.py - Temporarily for debugging
 async def _make_api_call(self, requests):
     _LOGGER.debug("API Request: %s", requests)
     
@@ -393,7 +393,7 @@ async def _make_api_call(self, requests):
     return data
 ```
 
-### State-Debugging
+### State Debugging
 
 ```python
 # Developer Tools > Template
@@ -402,63 +402,63 @@ async def _make_api_call(self, requests):
 {{ states.sensor.name_of_child_current_lesson.last_updated }}
 ```
 
-### Network-Debugging
+### Network Debugging
 
 ```bash
-# Wireshark/tcpdump für HTTP-Traffic
+# Wireshark/tcpdump for HTTP traffic
 sudo tcpdump -i any -A -s 0 'host login.schulmanager-online.de'
 
-# curl für API-Tests
+# curl for API tests
 curl -v 'https://login.schulmanager-online.de/api/salt' \
   -H 'content-type: application/json' \
   --data-raw '{"emailOrUsername":"test@example.com","mobileApp":false,"institutionId":null}'
 ```
 
-## 📋 Checkliste für Problemdiagnose
+## 📋 Problem Diagnosis Checklist
 
-### ✅ Basis-Checks
+### ✅ Basic Checks
 
-- [ ] Home Assistant läuft und ist erreichbar (http://localhost:8123)
-- [ ] Custom Integration ist in `/config/custom_components/` vorhanden
-- [ ] Anmeldedaten sind korrekt
-- [ ] Internetverbindung funktioniert
-- [ ] Schulmanager Online Website ist erreichbar
+- [ ] Home Assistant is running and accessible (http://localhost:8123)
+- [ ] Custom integration is present in `/config/custom_components/`
+- [ ] Credentials are correct
+- [ ] Internet connection works
+- [ ] Schulmanager Online website is accessible
 
-### ✅ API-Checks
+### ✅ API Checks
 
-- [ ] Salt-Abruf funktioniert
-- [ ] Hash-Generierung korrekt (1024 Zeichen)
-- [ ] Login erfolgreich (JWT-Token erhalten)
-- [ ] Schülerdaten verfügbar
-- [ ] Stundenplan-Daten abrufbar
+- [ ] Salt retrieval works
+- [ ] Hash generation correct (1024 characters)
+- [ ] Login successful (JWT token received)
+- [ ] Student data available
+- [ ] Schedule data retrievable
 
-### ✅ Integration-Checks
+### ✅ Integration Checks
 
-- [ ] Integration in Settings > Integrations sichtbar
-- [ ] Konfiguration erfolgreich
-- [ ] Sensoren werden erstellt
-- [ ] Sensoren haben Daten
-- [ ] Updates funktionieren
+- [ ] Integration visible in Settings > Integrations
+- [ ] Configuration successful
+- [ ] Sensors are created
+- [ ] Sensors have data
+- [ ] Updates work
 
-### ✅ UI-Checks
+### ✅ UI Checks
 
-- [ ] Sensoren in States sichtbar
-- [ ] Attribute korrekt gefüllt
-- [ ] Custom Card lädt
-- [ ] Dashboard zeigt Daten
+- [ ] Sensors visible in States
+- [ ] Attributes correctly filled
+- [ ] Custom card loads
+- [ ] Dashboard shows data
 
-## 🆘 Support und Hilfe
+## 🆘 Support and Help
 
-### Log-Sammlung für Support
+### Log Collection for Support
 
 ```bash
-# Vollständige Logs sammeln
+# Collect complete logs
 docker logs schulmanager-ha-test > ha_logs.txt 2>&1
 
-# Nur Schulmanager-relevante Logs
+# Only Schulmanager-relevant logs
 docker logs schulmanager-ha-test 2>&1 | grep -i schulmanager > schulmanager_logs.txt
 
-# System-Informationen
+# System information
 echo "=== System Info ===" > debug_info.txt
 uname -a >> debug_info.txt
 docker --version >> debug_info.txt
@@ -466,10 +466,10 @@ echo "=== Container Status ===" >> debug_info.txt
 docker ps >> debug_info.txt
 ```
 
-### Minimal-Reproduktion
+### Minimal Reproduction
 
 ```python
-# Minimales Test-Script für Fehlerreproduktion
+# Minimal test script for error reproduction
 import asyncio
 import aiohttp
 from custom_components.schulmanager_online.api import SchulmanagerAPI
@@ -494,15 +494,15 @@ if __name__ == "__main__":
     asyncio.run(minimal_test())
 ```
 
-### Community-Support
+### Community Support
 
-- **GitHub Issues**: Für Bug-Reports und Feature-Requests
-- **Home Assistant Community**: Für allgemeine Fragen
-- **Discord/Forum**: Für Echtzeit-Hilfe
+- **GitHub Issues**: For bug reports and feature requests
+- **Home Assistant Community**: For general questions
+- **Discord/Forum**: For real-time help
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [API Analysis](API_Analysis.md) - API-Details
-- [Authentication Guide](Authentication_Guide.md) - Authentifizierung
-- [Integration Architecture](Integration_Architecture.md) - Architektur
-- [Development Setup](Development_Setup.md) - Entwicklungsumgebung
+- [API Analysis](API_Analysis.md) - API details
+- [Authentication Guide](Authentication_Guide.md) - Authentication
+- [Integration Architecture](Integration_Architecture.md) - Architecture
+- [Development Setup](Development_Setup.md) - Development environment

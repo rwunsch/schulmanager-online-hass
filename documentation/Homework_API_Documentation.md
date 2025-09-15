@@ -1,16 +1,16 @@
-# Hausaufgaben-API - Detaillierte Dokumentation
+# Homework API - Detailed Documentation
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Die Hausaufgaben-API ermöglicht das Abrufen von Hausaufgaben für Schüler über das `classbook`-Modul der Schulmanager Online API. Diese Dokumentation beschreibt die Implementierung, Datenstrukturen und Verwendung.
+The Homework API enables retrieving homework assignments for students via the `classbook` module of the Schulmanager Online API. This documentation describes the implementation, data structures, and usage.
 
-## 📡 API-Endpunkt
+## 📡 API Endpoint
 
-### Hausaufgaben abrufen
+### Retrieve Homework
 
-**Endpunkt**: `classbook/get-homework`
-**Methode**: POST
-**Modul**: `classbook`
+**Endpoint**: `classbook/get-homework`
+**Method**: POST
+**Module**: `classbook`
 
 ```http
 POST /api/calls
@@ -31,9 +31,9 @@ Content-Type: application/json
 }
 ```
 
-## 📊 Response-Struktur
+## 📊 Response Structure
 
-### Erfolgreiche Response
+### Successful Response
 
 ```json
 {
@@ -43,28 +43,28 @@ Content-Type: application/json
       "data": [
         {
           "id": 12345,
-          "subject": "Mathematik",
-          "homework": "Aufgaben S. 45, Nr. 1-10 bearbeiten",
+          "subject": "Mathematics",
+          "homework": "Work on problems p. 45, No. 1-10",
           "date": "2025-09-16",
-          "teacher": "Herr Schmidt",
+          "teacher": "Mr. Schmidt",
           "completed": false,
           "createdAt": "2025-09-11T08:30:00.000Z",
           "updatedAt": "2025-09-11T08:30:00.000Z"
         },
         {
           "id": 12346,
-          "subject": "Deutsch",
-          "homework": "Gedicht 'Der Erlkönig' auswendig lernen",
+          "subject": "German",
+          "homework": "Memorize poem 'Der Erlkönig'",
           "date": "2025-09-17",
-          "teacher": "Frau Müller",
+          "teacher": "Mrs. Müller",
           "completed": true,
           "createdAt": "2025-09-10T14:20:00.000Z",
           "updatedAt": "2025-09-12T16:45:00.000Z"
         },
         {
           "id": 12347,
-          "subject": "Englisch",
-          "homework": "Vocabulary Unit 3 lernen",
+          "subject": "English",
+          "homework": "Learn Vocabulary Unit 3",
           "date": "2025-09-18",
           "teacher": "Mrs. Johnson",
           "completed": false,
@@ -77,22 +77,22 @@ Content-Type: application/json
 }
 ```
 
-### Datenfeld-Beschreibung
+### Data Field Description
 
-| Feld | Typ | Beschreibung |
-|------|-----|--------------|
-| `id` | `number` | Eindeutige ID der Hausaufgabe |
-| `subject` | `string` | Fach-Name (direkt als String) |
-| `homework` | `string` | Beschreibung der Hausaufgabe |
-| `date` | `string` | Fälligkeitsdatum (ISO-Format: YYYY-MM-DD) |
-| `teacher` | `string` | Name des Lehrers |
-| `completed` | `boolean` | Status: erledigt (true) oder offen (false) |
-| `createdAt` | `string` | Erstellungsdatum (ISO-Format) |
-| `updatedAt` | `string` | Letzte Aktualisierung (ISO-Format) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `number` | Unique homework assignment ID |
+| `subject` | `string` | Subject name (direct string) |
+| `homework` | `string` | Homework description |
+| `date` | `string` | Due date (ISO format: YYYY-MM-DD) |
+| `teacher` | `string` | Teacher name |
+| `completed` | `boolean` | Status: completed (true) or pending (false) |
+| `createdAt` | `string` | Creation date (ISO format) |
+| `updatedAt` | `string` | Last update (ISO format) |
 
-## 🐍 Python-Implementierung
+## 🐍 Python Implementation
 
-### API-Client-Methode
+### API Client Method
 
 ```python
 async def get_homework(self, student_id: int) -> Dict[str, Any]:
@@ -129,7 +129,7 @@ async def get_homework(self, student_id: int) -> Dict[str, Any]:
         raise SchulmanagerAPIError(f"Failed to get homework: {e}") from e
 ```
 
-### Fallback-Implementierung
+### Fallback Implementation
 
 ```python
 async def get_homework_legacy(self, student_id: int) -> Dict[str, Any]:
@@ -143,7 +143,7 @@ async def get_homework_legacy(self, student_id: int) -> Dict[str, Any]:
     
     try:
         response = await self._make_api_call(requests)
-        # ... ähnliche Implementierung
+        # ... similar implementation
         return homework_data
         
     except Exception as e:
@@ -151,18 +151,18 @@ async def get_homework_legacy(self, student_id: int) -> Dict[str, Any]:
         raise SchulmanagerAPIError(f"Failed to get homework (legacy): {e}") from e
 ```
 
-## 📊 Sensor-Integration
+## 📊 Sensor Integration
 
-### Hausaufgaben-Sensoren
+### Homework Sensors
 
-Die Hausaufgaben-API wird in 4 verschiedene Sensoren integriert:
+The Homework API is integrated into 4 different sensors:
 
-1. **Homework Due Today** - Heute fällige Hausaufgaben
-2. **Homework Due Tomorrow** - Morgen fällige Hausaufgaben  
-3. **Homework Overdue** - Überfällige Hausaufgaben
-4. **Homework Upcoming** - Kommende Hausaufgaben (7 Tage)
+1. **Homework Due Today** - Homework due today
+2. **Homework Due Tomorrow** - Homework due tomorrow
+3. **Homework Overdue** - Overdue homework
+4. **Homework Upcoming** - Upcoming homework (7 days)
 
-### Sensor-Logik
+### Sensor Logic
 
 ```python
 def get_homework_due_today_count(student_data: Dict[str, Any]) -> str:
@@ -199,7 +199,7 @@ def get_homework_due_today_attributes(student_data: Dict[str, Any]) -> Dict[str,
     return attributes
 ```
 
-### Daten-Transformation
+### Data Transformation
 
 ```python
 def _format_homework_info(homework: Dict[str, Any]) -> Dict[str, Any]:
@@ -235,9 +235,9 @@ def calculate_days_overdue(date_str: str) -> int:
         return 0
 ```
 
-## 🔄 Update-Strategie
+## 🔄 Update Strategy
 
-### Coordinator-Integration
+### Coordinator Integration
 
 ```python
 # In coordinator.py
@@ -254,15 +254,15 @@ async def _async_update_data(self):
             student_data["homework"] = {"homeworks": []}
 ```
 
-### Update-Intervall
+### Update Interval
 
-- **Standard**: 15 Minuten
-- **Während Schulzeit**: 15 Minuten (keine Änderung nötig)
-- **Außerhalb Schulzeit**: 1 Stunde (geplant)
+- **Standard**: 15 minutes
+- **During school hours**: 15 minutes (no change needed)
+- **Outside school hours**: 1 hour (planned)
 
-## 🧪 Test-Implementation
+## 🧪 Test Implementation
 
-### Test-Script
+### Test Script
 
 ```python
 #!/usr/bin/env python3
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     asyncio.run(test_homework_api())
 ```
 
-### Curl-Test
+### Curl Test
 
 ```bash
 # Test homework API with curl
@@ -325,18 +325,18 @@ curl 'https://login.schulmanager-online.de/api/calls' \
   }'
 ```
 
-## 🚨 Fehlerbehandlung
+## 🚨 Error Handling
 
-### Häufige Fehler
+### Common Errors
 
-| Fehler | Status | Ursache | Lösung |
-|--------|--------|---------|--------|
-| `No homework response` | - | API-Response leer | Retry-Logic implementieren |
-| `Homework request failed: 400` | 400 | Ungültige Parameter | Student-ID validieren |
-| `Homework request failed: 401` | 401 | Token abgelaufen | Token erneuern |
-| `Homework request failed: 403` | 403 | Keine Berechtigung | Account-Typ prüfen |
+| Error | Status | Cause | Solution |
+|-------|--------|-------|----------|
+| `No homework response` | - | API response empty | Implement retry logic |
+| `Homework request failed: 400` | 400 | Invalid parameters | Validate student ID |
+| `Homework request failed: 401` | 401 | Token expired | Renew token |
+| `Homework request failed: 403` | 403 | No permission | Check account type |
 
-### Error-Recovery
+### Error Recovery
 
 ```python
 async def get_homework_with_retry(self, student_id: int, max_retries: int = 3) -> Dict[str, Any]:
@@ -360,31 +360,31 @@ async def get_homework_with_retry(self, student_id: int, max_retries: int = 3) -
     raise SchulmanagerAPIError("Max retries exceeded")
 ```
 
-## 📱 Dashboard-Integration
+## 📱 Dashboard Integration
 
-### Lovelace-Karten
+### Lovelace Cards
 
 ```yaml
-# Hausaufgaben-Übersicht
+# Homework Overview
 type: entities
-title: "Hausaufgaben - Marc Cedric"
+title: "Homework - Marc Cedric"
 entities:
   - entity: sensor.name_of_child_homework_due_today
-    name: "Heute fällig"
+    name: "Due Today"
   - entity: sensor.name_of_child_homework_due_tomorrow  
-    name: "Morgen fällig"
+    name: "Due Tomorrow"
   - entity: sensor.name_of_child_homework_overdue
-    name: "Überfällig"
+    name: "Overdue"
   - entity: sensor.name_of_child_homework_upcoming
-    name: "Kommend"
+    name: "Upcoming"
 ```
 
-### Automatisierungen
+### Automations
 
 ```yaml
-# Erinnerung bei überfälligen Hausaufgaben
+# Reminder for overdue homework
 automation:
-  - alias: "Hausaufgaben - Überfällig"
+  - alias: "Homework - Overdue"
     trigger:
       - platform: numeric_state
         entity_id: sensor.name_of_child_homework_overdue
@@ -392,15 +392,15 @@ automation:
     action:
       - service: notify.family
         data:
-          title: "📚 Überfällige Hausaufgaben"
+          title: "📚 Overdue Homework"
           message: >
             {{ states('sensor.name_of_child_homework_overdue') }} 
-            Hausaufgaben sind überfällig!
+            homework assignments are overdue!
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [API Analysis](API_Analysis.md) - Vollständige API-Dokumentation
-- [Sensors Documentation](Sensors_Documentation.md) - Sensor-Details
-- [Integration Architecture](Integration_Architecture.md) - Architektur-Übersicht
-- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problemlösungen
+- [API Analysis](API_Analysis.md) - Complete API documentation
+- [Sensors Documentation](Sensors_Documentation.md) - Sensor details
+- [Integration Architecture](Integration_Architecture.md) - Architecture overview
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions

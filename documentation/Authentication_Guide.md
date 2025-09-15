@@ -1,19 +1,62 @@
-# Authentifizierung - Detaillierter Guide
+# Authentication Guide - Schulmanager Online API
 
-## 🔐 Übersicht
+## 🎯 Overview
 
-Die Schulmanager Online API verwendet eine zweistufige Authentifizierung:
-1. **Salt-basiertes PBKDF2-SHA512 Hashing**
-2. **JWT Token-basierte Autorisierung**
+The Schulmanager Online API uses a special authentication method with **PBKDF2-SHA512 hashing** and **JWT tokens**. This guide explains the authentication process in detail.
 
-## 🧂 Salt-Abruf
+## 🔐 Authentication Flow
+
+### 1. Complete Authentication Process
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    
+    Client->>API: POST /api/salt (email)
+    API->>Client: salt string
+    
+    Note over Client: Generate PBKDF2-SHA512 hash
+    Note over Client: hash = pbkdf2(password, salt, 99999, 512)
+    
+    Client->>API: POST /api/login (email, password, hash)
+    API->>Client: JWT token + user data
+    
+    Note over Client: Store token for API calls
+    
+    Client->>API: POST /api/calls (with Bearer token)
+    API->>Client: API response
+```
+
+## 🧂 Step 1: Salt Retrieval
 
 ### Request
+
+```http
+POST https://login.schulmanager-online.de/api/salt
+Content-Type: application/json
+
+{
+  "emailOrUsername": "your-email@example.com",
+  "mobileApp": false,
+  "institutionId": null
+}
+```
+
+### Response
+
+```json
+"random_salt_string_here"
+```
+
+### Python Implementation
+
 ```python
 async def _get_salt(self) -> str:
+    """Get salt for password hashing."""
     payload = {
         "emailOrUsername": self.email,
-        "mobileApp": False,  # WICHTIG: Muss False sein!
+        "mobileApp": False,  # IMPORTANT: false for web clients
         "institutionId": None
     }
     
@@ -21,7 +64,7 @@ async def _get_salt(self) -> str:
         if response.status != 200:
             raise SchulmanagerAPIError(f"Salt request failed: {response.status}")
         
-        # Salt wird als String zurückgegeben, nicht als JSON-Objekt
+        # Handle both string and JSON responses
         try:
             data = await response.json()
             if isinstance(data, str):
@@ -37,53 +80,39 @@ async def _get_salt(self) -> str:
         return salt
 ```
 
-### Wichtige Erkenntnisse
-- **`mobileApp: False`** ist erforderlich für Web-Clients
-- **Salt wird als String zurückgegeben**, nicht als JSON mit "salt"-Key
-- **Fallback auf `response.text()`** für reine String-Responses
+## 🔑 Step 2: Hash Generation
 
-## 🔒 PBKDF2-SHA512 Hash-Generierung
+### PBKDF2-SHA512 Parameters
 
-### Algorithmus-Parameter
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| **Algorithm** | `PBKDF2-SHA512` | Hash algorithm |
+| **Iterations** | `99999` | Number of iterations |
+| **Key Length** | `512 bytes` | Output length |
+| **Salt Encoding** | `UTF-8` | **NOT Hex!** |
+| **Output Format** | `Hex` | 1024 character string |
 
-| Parameter | Wert | Beschreibung |
-|-----------|------|--------------|
-| **Algorithm** | PBKDF2 | Password-Based Key Derivation Function 2 |
-| **Hash Function** | SHA-512 | Secure Hash Algorithm 512-bit |
-| **Iterations** | 99.999 | Anzahl der Hash-Iterationen |
-| **Output Length** | 512 Bytes | 4096 Bits Output |
-| **Hex Length** | 1024 Zeichen | Hexadezimale Darstellung |
-| **Salt Encoding** | UTF-8 | **NICHT** Hex-Encoding! |
-| **Password Encoding** | UTF-8 | Standard UTF-8 Encoding |
-
-### Python-Implementierung
+### Python Implementation
 
 ```python
+import hashlib
+
 def _generate_salted_hash(self, password: str, salt: str) -> str:
-    """
-    Generate salted hash using PBKDF2-SHA512
-    
-    Basierend auf der JavaScript-Implementierung:
-    - PBKDF2 mit SHA-512
-    - 512 Bytes Output (4096 Bits) = 1024 Hex-Zeichen
-    - Salt als UTF-8 encodiert (nicht Hex!)
-    - 99999 Iterationen
-    """
+    """Generate salted hash using PBKDF2-SHA512"""
     try:
-        # Encode password and salt as UTF-8
         password_bytes = password.encode('utf-8')
-        salt_bytes = salt.encode('utf-8')  # WICHTIG: UTF-8, nicht Hex!
+        salt_bytes = salt.encode('utf-8')  # CRITICAL: UTF-8, not Hex!
         
-        # Generate hash with PBKDF2-SHA512
+        # PBKDF2-SHA512 with 99999 iterations, 512 bytes output
         hash_bytes = hashlib.pbkdf2_hmac(
             'sha512',           # Hash algorithm
-            password_bytes,     # Password
-            salt_bytes,         # Salt
-            99999,             # Iterations
-            dklen=512          # Output length in bytes
+            password_bytes,     # Password as bytes
+            salt_bytes,         # Salt as bytes (UTF-8!)
+            99999,              # Iterations
+            dklen=512           # Output length in bytes
         )
         
-        # Convert to hex string (1024 characters)
+        # Convert to hex (1024 characters)
         hash_hex = hash_bytes.hex()
         
         return hash_hex
@@ -92,45 +121,83 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
         raise SchulmanagerAPIError(f"Hash generation failed: {e}") from e
 ```
 
-### JavaScript-Original (Referenz)
+### Common Hash Generation Errors
 
-```javascript
-// Original JavaScript-Implementierung aus Schulmanager Online
-async function generateHash(password, salt) {
-    const hashBuffer = await crypto.subtle.deriveBits(
-        {
-            name: "PBKDF2",
-            salt: new TextEncoder().encode(salt),  // UTF-8 encoding
-            iterations: 99999,
-            hash: "SHA-512"
-        },
-        await crypto.subtle.importKey(
-            "raw",
-            new TextEncoder().encode(password),    // UTF-8 encoding
-            "PBKDF2",
-            false,
-            ["deriveBits"]
-        ),
-        4096  // 512 bytes * 8 bits = 4096 bits
-    );
-    
-    // Convert to hex string
-    return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+#### ❌ Wrong Salt Encoding
+```python
+# WRONG: Hex decoding
+salt_bytes = bytes.fromhex(salt)  # DON'T DO THIS!
+
+# CORRECT: UTF-8 encoding
+salt_bytes = salt.encode('utf-8')  # CORRECT!
+```
+
+#### ❌ Wrong Parameters
+```python
+# WRONG: Wrong iteration count
+hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 100000, dklen=512)
+
+# CORRECT: Exactly 99999 iterations
+hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 99999, dklen=512)
+```
+
+#### ❌ Wrong Output Length
+```python
+# WRONG: 64 bytes (128 hex chars)
+hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 99999, dklen=64)
+
+# CORRECT: 512 bytes (1024 hex chars)
+hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 99999, dklen=512)
+```
+
+## 🔓 Step 3: Login
+
+### Request
+
+```http
+POST https://login.schulmanager-online.de/api/login
+Content-Type: application/json
+
+{
+  "emailOrUsername": "your-email@example.com",
+  "password": "your-original-password",
+  "hash": "1024-character-pbkdf2-hash",
+  "mobileApp": false,
+  "institutionId": null
 }
 ```
 
-## 🎫 JWT Token-Authentifizierung
+### Response
 
-### Login-Request
+```json
+{
+  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 12345,
+    "email": "your-email@example.com",
+    "associatedParents": [
+      {
+        "student": {
+          "id": 67890,
+          "firstName": "Max",
+          "lastName": "Mustermann",
+          "class": "10a"
+        }
+      }
+    ]
+  }
+}
+```
+
+### Python Implementation
 
 ```python
 async def _login(self, salted_hash: str) -> None:
+    """Login with salted hash."""
     payload = {
         "emailOrUsername": self.email,
-        "password": self.password,      # Original-Passwort
-        "hash": salted_hash,            # PBKDF2-SHA512 Hash
+        "password": self.password,  # Original password!
+        "hash": salted_hash,        # PBKDF2 hash
         "mobileApp": False,
         "institutionId": None
     }
@@ -141,7 +208,7 @@ async def _login(self, salted_hash: str) -> None:
         
         data = await response.json()
         
-        # Token kann als "jwt" oder "token" zurückgegeben werden
+        # Extract JWT token (check both variants)
         self.token = data.get("jwt") or data.get("token")
         
         if not self.token:
@@ -154,71 +221,56 @@ async def _login(self, salted_hash: str) -> None:
         self.token_expires = datetime.now() + timedelta(hours=1)
 ```
 
-### Token-Verwendung
+## 🎫 JWT Token Usage
+
+### Token Structure
+
+JWT tokens have three parts separated by dots:
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+│                                      │                                                                                │
+│            Header                    │                          Payload                                               │                    Signature
+```
+
+### Using Token for API Calls
 
 ```python
 async def _make_api_call(self, requests: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Make authenticated API call."""
     await self._ensure_authenticated()
     
     headers = {
-        "Authorization": f"Bearer {self.token}",
+        "Authorization": f"Bearer {self.token}",  # JWT token as Bearer
         "Content-Type": "application/json"
     }
     
     payload = {
-        "bundleVersion": "3505280ee7",  # Aktuelle Version
+        "bundleVersion": "3505280ee7",  # REQUIRED!
         "requests": requests
     }
     
     async with self.session.post(API_URL, json=payload, headers=headers) as response:
-        # Handle response...
+        if response.status == 401:
+            # Token expired - re-authenticate
+            await self.authenticate()
+            headers["Authorization"] = f"Bearer {self.token}"
+            
+            # Retry request
+            async with self.session.post(API_URL, json=payload, headers=headers) as retry_response:
+                return await retry_response.json()
+        
+        elif response.status != 200:
+            raise SchulmanagerAPIError(f"API call failed: {response.status}")
+        
+        return await response.json()
 ```
 
-## 👥 Schülerdaten-Extraktion
+## ⏰ Token Management
 
-### Aus Login-Response
+### Token Expiration
 
-Die Schülerdaten sind bereits in der Login-Response enthalten und müssen **nicht** über separate API-Calls abgerufen werden:
-
-```python
-async def get_students(self) -> List[Dict[str, Any]]:
-    await self._ensure_authenticated()
-    
-    students = []
-    
-    # Eltern-Account: associatedParents
-    associated_parents = self.user_data.get("associatedParents", [])
-    for parent in associated_parents:
-        student = parent.get("student")
-        if student:
-            students.append(student)
-    
-    # Schüler-Account: associatedStudent
-    associated_student = self.user_data.get("associatedStudent")
-    if associated_student:
-        students.append(associated_student)
-    
-    if not students:
-        raise SchulmanagerAPIError("No students found for this account")
-    
-    return students
-```
-
-### Schüler-Datenstruktur
-
-```json
-{
-  "id": 4333047,
-  "firstname": "Marc Cedric",
-  "lastname": "Wunsch",
-  "sex": "Male",
-  "classId": 444612
-}
-```
-
-## 🔄 Token-Management
-
-### Automatische Erneuerung
+JWT tokens expire after **1 hour**. The integration automatically handles token renewal:
 
 ```python
 async def _ensure_authenticated(self) -> None:
@@ -227,120 +279,254 @@ async def _ensure_authenticated(self) -> None:
         await self.authenticate()
         return
     
-    # Check if token is expired (with 5-minute buffer)
+    # Check if token expires soon (5-minute buffer)
     if datetime.now() >= (self.token_expires - timedelta(minutes=5)):
         _LOGGER.debug("Token expired, re-authenticating")
         await self.authenticate()
 ```
 
-### Token-Eigenschaften
+### Automatic Retry on 401
 
-| Eigenschaft | Wert | Beschreibung |
-|-------------|------|--------------|
-| **Format** | JWT | JSON Web Token |
-| **Gültigkeit** | 1 Stunde | Automatische Erneuerung |
-| **Header** | `Authorization: Bearer <token>` | HTTP-Header |
-| **Erneuerung** | 5 Min vor Ablauf | Puffer für nahtlose Nutzung |
-
-## 🚨 Häufige Authentifizierungs-Probleme
-
-### 1. Hash-Generierung fehlgeschlagen
-
-**Symptome:**
-- Login schlägt mit 401 fehl
-- Hash hat falsche Länge
-
-**Lösungen:**
 ```python
-# Überprüfe Hash-Parameter
-assert len(hash_hex) == 1024, f"Hash length should be 1024, got {len(hash_hex)}"
-
-# Überprüfe Salt-Encoding
-salt_bytes = salt.encode('utf-8')  # NICHT: bytes.fromhex(salt)
-
-# Überprüfe Iterationen
-iterations = 99999  # NICHT: 10000
+# In _make_api_call method
+if response.status == 401:
+    # Token expired, try to re-authenticate
+    await self.authenticate()
+    headers["Authorization"] = f"Bearer {self.token}"
+    
+    # Retry the request once
+    async with self.session.post(API_URL, json=payload, headers=headers) as retry_response:
+        if retry_response.status != 200:
+            raise SchulmanagerAPIError(f"API call failed after retry: {retry_response.status}")
+        return await retry_response.json()
 ```
 
-### 2. Salt-Abruf fehlgeschlagen
+## 🧪 Testing Authentication
 
-**Symptome:**
-- "No salt received" Fehler
-- 400 Bad Request beim Salt-Abruf
+### Manual Test with curl
 
-**Lösungen:**
+```bash
+# Step 1: Get salt
+curl 'https://login.schulmanager-online.de/api/salt' \
+  -H 'content-type: application/json' \
+  --data-raw '{"emailOrUsername":"your-email@example.com","mobileApp":false,"institutionId":null}'
+
+# Step 2: Generate hash (use Python script)
+python3 -c "
+import hashlib
+password = 'your-password'
+salt = 'salt-from-step-1'
+hash_bytes = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), salt.encode('utf-8'), 99999, dklen=512)
+print(hash_bytes.hex())
+"
+
+# Step 3: Login
+curl 'https://login.schulmanager-online.de/api/login' \
+  -H 'content-type: application/json' \
+  --data-raw '{
+    "emailOrUsername":"your-email@example.com",
+    "password":"your-password",
+    "hash":"hash-from-step-2",
+    "mobileApp":false,
+    "institutionId":null
+  }'
+```
+
+### Python Test Script
+
 ```python
-# Füge mobileApp Parameter hinzu
+#!/usr/bin/env python3
+"""Test authentication with Schulmanager Online API."""
+
+import asyncio
+import aiohttp
+import hashlib
+from datetime import datetime, timedelta
+
+async def test_authentication():
+    async with aiohttp.ClientSession() as session:
+        email = "your-email@example.com"
+        password = "your-password"
+        
+        # Step 1: Get salt
+        salt_payload = {
+            "emailOrUsername": email,
+            "mobileApp": False,
+            "institutionId": None
+        }
+        
+        async with session.post(
+            "https://login.schulmanager-online.de/api/salt",
+            json=salt_payload
+        ) as response:
+            if response.status != 200:
+                print(f"Salt request failed: {response.status}")
+                return
+            
+            salt = await response.text()
+            salt = salt.strip('"')  # Remove quotes if present
+            print(f"Salt received: {salt[:20]}... ({len(salt)} chars)")
+        
+        # Step 2: Generate hash
+        password_bytes = password.encode('utf-8')
+        salt_bytes = salt.encode('utf-8')
+        
+        hash_bytes = hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 99999, dklen=512)
+        salted_hash = hash_bytes.hex()
+        
+        print(f"Hash generated: {salted_hash[:20]}... ({len(salted_hash)} chars)")
+        
+        # Step 3: Login
+        login_payload = {
+            "emailOrUsername": email,
+            "password": password,
+            "hash": salted_hash,
+            "mobileApp": False,
+            "institutionId": None
+        }
+        
+        async with session.post(
+            "https://login.schulmanager-online.de/api/login",
+            json=login_payload
+        ) as response:
+            if response.status != 200:
+                print(f"Login failed: {response.status}")
+                error_text = await response.text()
+                print(f"Error: {error_text}")
+                return
+            
+            data = await response.json()
+            token = data.get("jwt") or data.get("token")
+            
+            if token:
+                print(f"Login successful! Token: {token[:50]}...")
+                print(f"User ID: {data.get('user', {}).get('id')}")
+                
+                # Test API call
+                await test_api_call(session, token)
+            else:
+                print("No token received!")
+                print(f"Response: {data}")
+
+async def test_api_call(session: aiohttp.ClientSession, token: str):
+    """Test an API call with the token."""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "bundleVersion": "3505280ee7",
+        "requests": [
+            {
+                "method": "user/get-user-data",
+                "data": {}
+            }
+        ]
+    }
+    
+    async with session.post(
+        "https://login.schulmanager-online.de/api/calls",
+        json=payload,
+        headers=headers
+    ) as response:
+        if response.status == 200:
+            data = await response.json()
+            print(f"API call successful! Response keys: {list(data.keys())}")
+        else:
+            print(f"API call failed: {response.status}")
+            error_text = await response.text()
+            print(f"Error: {error_text}")
+
+if __name__ == "__main__":
+    asyncio.run(test_authentication())
+```
+
+## 🚨 Common Authentication Problems
+
+### Problem 1: Salt Encoding Error
+
+**Symptoms:**
+- Hash generation works but login fails
+- Error: "Invalid credentials" despite correct password
+
+**Solution:**
+```python
+# WRONG
+salt_bytes = bytes.fromhex(salt)
+
+# CORRECT
+salt_bytes = salt.encode('utf-8')
+```
+
+### Problem 2: Wrong Iteration Count
+
+**Symptoms:**
+- Login fails with "Invalid credentials"
+- Hash length is correct (1024 chars)
+
+**Solution:**
+```python
+# Check iteration count - must be exactly 99999
+hashlib.pbkdf2_hmac('sha512', password_bytes, salt_bytes, 99999, dklen=512)
+```
+
+### Problem 3: Missing Bundle Version
+
+**Symptoms:**
+- Authentication works but API calls fail
+- Error: "Bundle version required"
+
+**Solution:**
+```python
 payload = {
-    "emailOrUsername": self.email,
-    "mobileApp": False,  # WICHTIG!
-    "institutionId": None
+    "bundleVersion": "3505280ee7",  # REQUIRED!
+    "requests": requests
 }
-
-# Handle String-Response
-if isinstance(data, str):
-    salt = data
-else:
-    salt = data.get("salt")
 ```
 
-### 3. Token-Extraktion fehlgeschlagen
+### Problem 4: Token Expiration
 
-**Symptome:**
-- "No token received" Fehler
-- Login erfolgreich, aber kein Token
+**Symptoms:**
+- First API calls work, later calls fail with 401
+- Error: "Token expired"
 
-**Lösungen:**
+**Solution:**
 ```python
-# Prüfe beide Token-Keys
-self.token = data.get("jwt") or data.get("token")
-
-# Debug Login-Response
-_LOGGER.debug("Login response keys: %s", list(data.keys()))
+# Implement automatic token renewal
+if response.status == 401:
+    await self.authenticate()
+    # Retry request
 ```
 
-## 🔧 Debug-Tipps
+## 🔧 Configuration
 
-### 1. Hash-Vergleich
+### Environment Variables for Testing
 
-```python
-# Vergleiche mit Browser-Hash
-browser_hash = "dc17df60e0e8ce0ed835433d8103ca1de38f0c6ce52068515d62fcc8381302ba..."
-python_hash = self._generate_salted_hash(password, salt)
-
-print(f"Browser: {browser_hash}")
-print(f"Python:  {python_hash}")
-print(f"Match:   {browser_hash == python_hash}")
+```bash
+export SCHULMANAGER_EMAIL="your-email@example.com"
+export SCHULMANAGER_PASSWORD="your-password"
+export DEBUG_SCHULMANAGER_API="true"
 ```
 
-### 2. Salt-Debugging
+### Debug Logging
 
 ```python
-# Überprüfe Salt-Format
-print(f"Salt: '{salt}'")
-print(f"Salt length: {len(salt)}")
-print(f"Salt type: {type(salt)}")
-print(f"Salt bytes: {salt.encode('utf-8')}")
+import logging
+
+# Enable debug logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# In production (Home Assistant)
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.debug("Authentication successful, token expires at %s", self.token_expires)
 ```
 
-### 3. Token-Debugging
+## 📚 Further Documentation
 
-```python
-# Überprüfe Token-Format
-import base64
-import json
-
-# Decode JWT (ohne Signatur-Verifikation)
-header, payload, signature = token.split('.')
-decoded_payload = base64.urlsafe_b64decode(payload + '==')
-token_data = json.loads(decoded_payload)
-
-print(f"Token expires: {datetime.fromtimestamp(token_data['exp'])}")
-print(f"User ID: {token_data['sub']}")
-```
-
-## 📚 Weiterführende Dokumentation
-
-- [API Analysis](API_Analysis.md) - Vollständige API-Dokumentation
-- [API Implementation](API_Implementation.md) - Python-Implementierung
-- [Troubleshooting](Troubleshooting_Guide.md) - Problemlösungen
+- [API Implementation](API_Implementation.md) - Complete API client
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions
+- [Integration Architecture](Integration_Architecture.md) - Home Assistant integration

@@ -1,28 +1,28 @@
-# Entwicklungsumgebung - Setup Guide
+# Development Environment - Setup Guide
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Dieser Guide beschreibt die komplette Einrichtung einer Entwicklungsumgebung für die Schulmanager Online Integration, einschließlich Docker-Setup, Test-Scripts und Debugging-Tools.
+This guide describes the complete setup of a development environment for the Schulmanager Online integration, including Docker setup, test scripts, and debugging tools.
 
-## 🐳 Docker-Entwicklungsumgebung
+## 🐳 Docker Development Environment
 
-### Voraussetzungen
+### Prerequisites
 
 ```bash
-# Docker installieren (Ubuntu/Debian)
+# Install Docker (Ubuntu/Debian)
 sudo apt update
 sudo apt install docker.io docker-compose
 sudo usermod -aG docker $USER
 
-# Docker-Service starten
+# Start Docker service
 sudo systemctl start docker
 sudo systemctl enable docker
 
-# WSL2-spezifisch (falls verwendet)
+# WSL2-specific (if used)
 export DOCKER_HOST="unix:///var/run/docker.sock"
 ```
 
-### Home Assistant Test-Container
+### Home Assistant Test Container
 
 ```yaml
 # test-scripts/docker-compose-fixed.yml
@@ -34,7 +34,7 @@ services:
     volumes:
       - ./ha-config:/config
       - /etc/localtime:/etc/localtime:ro
-      - ../custom_components:/config/custom_components  # Integration mounten
+      - ../custom_components:/config/custom_components  # Mount integration
     restart: unless-stopped
     privileged: true
     ports:
@@ -43,24 +43,24 @@ services:
       - TZ=Europe/Berlin
 ```
 
-### Container-Management
+### Container Management
 
 ```bash
-# Container starten
+# Start container
 cd test-scripts
 docker compose -f docker-compose-fixed.yml up -d
 
-# Logs verfolgen
+# Follow logs
 docker logs -f schulmanager-ha-test
 
-# Container stoppen
+# Stop container
 docker compose -f docker-compose-fixed.yml down
 
-# Container neu starten (nach Code-Änderungen)
+# Restart container (after code changes)
 docker restart schulmanager-ha-test
 ```
 
-### Home Assistant Konfiguration
+### Home Assistant Configuration
 
 ```yaml
 # test-scripts/ha-config/configuration.yaml
@@ -83,11 +83,11 @@ homeassistant:
 # Enable default_config to get basic Home Assistant functionality
 default_config:
 
-# Configure recorder using SQLite (einfacher als PostgreSQL)
+# Configure recorder using SQLite (simpler than PostgreSQL)
 recorder:
   db_url: sqlite:////config/home-assistant_v2.db
 
-# Debug-Logging für Entwicklung
+# Debug logging for development
 logger:
   default: info
   logs:
@@ -102,22 +102,22 @@ lovelace:
       type: module
 ```
 
-## 🧪 Test-Scripts Setup
+## 🧪 Test Scripts Setup
 
 ### Python Virtual Environment
 
 ```bash
-# Virtual Environment erstellen
+# Create virtual environment
 cd test-scripts
 python3 -m venv venv
 
-# Aktivieren (Linux/Mac)
+# Activate (Linux/Mac)
 source venv/bin/activate
 
-# Aktivieren (Windows)
+# Activate (Windows)
 venv\Scripts\activate
 
-# Dependencies installieren
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -133,7 +133,7 @@ pytest-asyncio>=0.21.0
 jsbeautifier>=1.14.0
 ```
 
-### Makefile für einfache Befehle
+### Makefile for Simple Commands
 
 ```makefile
 # test-scripts/Makefile
@@ -188,11 +188,11 @@ venv:
 	@if [ ! -d "venv" ]; then make setup; fi
 ```
 
-## 🔧 Entwicklungs-Tools
+## 🔧 Development Tools
 
-### API-Test-Scripts
+### API Test Scripts
 
-#### 1. Basis-API-Test
+#### 1. Basic API Test
 
 ```python
 # test-scripts/test_corrected_hash.py
@@ -265,7 +265,7 @@ if __name__ == "__main__":
     sys.exit(0 if success else 1)
 ```
 
-#### 2. Integration-Test
+#### 2. Integration Test
 
 ```python
 # test-scripts/test_ha_integration.py
@@ -316,12 +316,12 @@ if __name__ == "__main__":
     asyncio.run(test_ha_integration())
 ```
 
-### JavaScript-Debugging
+### JavaScript Debugging
 
-#### Browser-Console-Tests
+#### Browser Console Tests
 
 ```javascript
-// Browser-Konsole (F12) - Custom Card testen
+// Browser Console (F12) - Test custom card
 console.log("Testing Custom Card...");
 
 // Check if card is registered
@@ -345,7 +345,7 @@ const entities = Object.keys(window.hass.states).filter(id =>
 console.log("Schulmanager entities:", entities);
 ```
 
-#### Card-Development-Server
+#### Card Development Server
 
 ```html
 <!-- test-scripts/test-card.html -->
@@ -365,10 +365,10 @@ console.log("Schulmanager entities:", entities);
         window.hass = {
             states: {
                 'sensor.name_of_child_current_lesson': {
-                    state: 'Mathematik',
+                    state: 'Mathematics',
                     attributes: {
-                        subject: 'Mathematik',
-                        teacher: 'Herr Schmidt',
+                        subject: 'Mathematics',
+                        teacher: 'Mr. Schmidt',
                         room: 'R204',
                         start_time: '09:45',
                         end_time: '10:30'
@@ -389,51 +389,51 @@ console.log("Schulmanager entities:", entities);
 </html>
 ```
 
-## 🔍 Debugging-Strategien
+## 🔍 Debugging Strategies
 
 ### Home Assistant Debugging
 
 ```bash
-# Live-Logs verfolgen
+# Follow live logs
 docker logs -f schulmanager-ha-test | grep -i schulmanager
 
-# Spezifische Komponenten-Logs
+# Specific component logs
 docker logs schulmanager-ha-test 2>&1 | grep "custom_components.schulmanager_online"
 
-# Container-Shell für Debugging
+# Container shell for debugging
 docker exec -it schulmanager-ha-test /bin/bash
 ```
 
-### Python-Debugging
+### Python Debugging
 
 ```python
-# Debug-Modus in Test-Scripts
+# Debug mode in test scripts
 import logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Breakpoints für Debugging
+# Breakpoints for debugging
 import pdb; pdb.set_trace()
 
-# Oder mit ipdb (bessere Alternative)
+# Or with ipdb (better alternative)
 import ipdb; ipdb.set_trace()
 ```
 
-### API-Request-Debugging
+### API Request Debugging
 
 ```python
-# HTTP-Traffic loggen
+# Log HTTP traffic
 import aiohttp
 import aiohttp_debugtoolbar
 
-# Session mit Debug-Toolbar
+# Session with debug toolbar
 session = aiohttp.ClientSession(
     trace_configs=[aiohttp.TraceConfig()]
 )
 
-# Request/Response loggen
+# Log request/response
 async def log_request(session, trace_config_ctx, params):
     print(f"Request: {params.method} {params.url}")
     print(f"Headers: {params.headers}")
@@ -447,9 +447,9 @@ trace_config.on_request_start.append(log_request)
 trace_config.on_request_end.append(log_response)
 ```
 
-## 🧪 Testing-Framework
+## 🧪 Testing Framework
 
-### Pytest-Setup
+### Pytest Setup
 
 ```python
 # test-scripts/conftest.py
@@ -491,7 +491,7 @@ def mock_api_response():
     }
 ```
 
-### Unit-Tests
+### Unit Tests
 
 ```python
 # test-scripts/test_api_unit.py
@@ -536,7 +536,7 @@ class TestSchulmanagerAPI:
         assert students[0]["lastname"] == "Student"
 ```
 
-### Integration-Tests
+### Integration Tests
 
 ```python
 # test-scripts/test_integration.py
@@ -570,12 +570,12 @@ async def test_integration_setup(hass: HomeAssistant):
     assert config_entry.entry_id in hass.data["schulmanager_online"]
 ```
 
-## 📊 Performance-Monitoring
+## 📊 Performance Monitoring
 
 ### Profiling
 
 ```python
-# Performance-Profiling
+# Performance profiling
 import cProfile
 import pstats
 
@@ -600,10 +600,10 @@ def profile_api_call():
     stats.print_stats(10)  # Top 10 functions
 ```
 
-### Memory-Monitoring
+### Memory Monitoring
 
 ```python
-# Memory-Usage-Monitoring
+# Memory usage monitoring
 import tracemalloc
 import asyncio
 
@@ -622,7 +622,7 @@ async def monitor_memory():
     tracemalloc.stop()
 ```
 
-## 🔄 CI/CD-Pipeline
+## 🔄 CI/CD Pipeline
 
 ### GitHub Actions
 
@@ -691,9 +691,9 @@ repos:
         args: [--profile=black]
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [API Implementation](API_Implementation.md) - API-Details
-- [Integration Architecture](Integration_Architecture.md) - Architektur
-- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problemlösungen
-- [Test Scripts Guide](Test_Scripts_Guide.md) - Test-Dokumentation
+- [API Implementation](API_Implementation.md) - API details
+- [Integration Architecture](Integration_Architecture.md) - Architecture
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions
+- [Test Scripts Guide](Test_Scripts_Guide.md) - Test documentation

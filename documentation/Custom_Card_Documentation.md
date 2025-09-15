@@ -1,102 +1,102 @@
-# Custom Card - Detaillierte Dokumentation
+# Custom Card - Detailed Documentation
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Die Schulmanager Schedule Card ist eine Custom Lovelace Card für Home Assistant, die eine benutzerfreundliche Darstellung des Stundenplans ermöglicht. Sie bietet vier verschiedene Ansichten und ist vollständig konfigurierbar.
+The Schulmanager Schedule Card is a custom Lovelace card for Home Assistant that provides a user-friendly display of the schedule. It offers four different views and is fully configurable.
 
-## 🎨 Verfügbare Ansichten
+## 🎨 Available Views
 
-### 1. Weekly Matrix (Wochenmatrix)
+### 1. Weekly Matrix (Week Matrix)
 ```yaml
 type: custom:schulmanager-schedule-card
 entity: sensor.name_of_child_current_lesson
 view: weekly_matrix
 ```
 
-**Beschreibung**: Zeigt den Stundenplan als traditionelle Wochenmatrix mit Tagen als Spalten und Stunden als Zeilen.
+**Description**: Shows the schedule as a traditional weekly matrix with days as columns and hours as rows.
 
 **Features**:
-- Übersichtliche Tabellenansicht
-- Farbkodierung nach Fächern
-- Vertretungen hervorgehoben
-- Aktuelle Stunde markiert
+- Clear table view
+- Color coding by subjects
+- Substitutions highlighted
+- Current lesson marked
 
-### 2. Weekly List (Wochenliste)
+### 2. Weekly List (Week List)
 ```yaml
 type: custom:schulmanager-schedule-card
 entity: sensor.name_of_child_current_lesson
 view: weekly_list
 ```
 
-**Beschreibung**: Listet alle Stunden der Woche chronologisch auf.
+**Description**: Lists all lessons of the week chronologically.
 
 **Features**:
-- Chronologische Auflistung
-- Detaillierte Informationen pro Stunde
-- Vertretungshinweise
-- Tagesgruppierung
+- Chronological listing
+- Detailed information per lesson
+- Substitution notices
+- Day grouping
 
-### 3. Daily List (Tagesliste)
+### 3. Daily List (Day List)
 ```yaml
 type: custom:schulmanager-schedule-card
 entity: sensor.name_of_child_current_lesson
 view: daily_list
 ```
 
-**Beschreibung**: Zeigt nur die Stunden des aktuellen Tages.
+**Description**: Shows only today's lessons.
 
 **Features**:
-- Fokus auf heute
-- Aktuelle/nächste Stunde hervorgehoben
-- Countdown bis zur nächsten Stunde
-- Pausenzeiten angezeigt
+- Focus on today
+- Current/next lesson highlighted
+- Countdown to next lesson
+- Break times displayed
 
-### 4. Compact (Kompakt)
+### 4. Compact (Compact)
 ```yaml
 type: custom:schulmanager-schedule-card
 entity: sensor.name_of_child_current_lesson
 view: compact
 ```
 
-**Beschreibung**: Minimale Ansicht für kleine Dashboard-Bereiche.
+**Description**: Minimal view for small dashboard areas.
 
 **Features**:
-- Nur aktuelle und nächste Stunde
-- Platzsparend
-- Wichtigste Informationen
-- Ideal für Mobile
+- Only current and next lesson
+- Space-saving
+- Most important information
+- Ideal for mobile
 
-## 🔧 Konfigurationsoptionen
+## 🔧 Configuration Options
 
-### Basis-Konfiguration
+### Basic Configuration
 
 ```yaml
 type: custom:schulmanager-schedule-card
-entity: sensor.name_of_child_current_lesson  # Erforderlich
-view: weekly_matrix                               # Standard: weekly_matrix
-title: "Stundenplan Marc Cedric"                 # Optional
-show_header: true                                # Standard: true
-show_breaks: true                                # Standard: true
+entity: sensor.name_of_child_current_lesson  # Required
+view: weekly_matrix                               # Default: weekly_matrix
+title: "Schedule Marc Cedric"                    # Optional
+show_header: true                                # Default: true
+show_breaks: true                                # Default: true
 ```
 
-### Erweiterte Konfiguration
+### Advanced Configuration
 
 ```yaml
 type: custom:schulmanager-schedule-card
 entity: sensor.name_of_child_current_lesson
 view: weekly_matrix
-title: "Stundenplan"
+title: "Schedule"
 show_header: true
 show_breaks: true
 color_scheme: "default"                          # default, dark, colorful
-highlight_current: true                          # Aktuelle Stunde hervorheben
-highlight_changes: true                          # Vertretungen hervorheben
-max_days: 7                                     # Maximale Anzahl Tage
-time_format: "24h"                              # 24h oder 12h
+highlight_current: true                          # Highlight current lesson
+highlight_changes: true                          # Highlight substitutions
+max_days: 7                                     # Maximum number of days
+time_format: "24h"                              # 24h or 12h
 language: "de"                                  # de, en, fr, etc.
 ```
 
-### Styling-Optionen
+### Styling Options
 
 ```yaml
 type: custom:schulmanager-schedule-card
@@ -117,9 +117,9 @@ style: |
   }
 ```
 
-## 🎨 Design-System
+## 🎨 Design System
 
-### Farbschemas
+### Color Schemes
 
 #### Default Theme
 ```css
@@ -150,38 +150,38 @@ style: |
 }
 ```
 
-### CSS-Klassen
+### CSS Classes
 
-| Klasse | Beschreibung |
-|--------|--------------|
-| `.schedule-card` | Haupt-Container |
-| `.schedule-header` | Card-Header |
-| `.schedule-content` | Haupt-Inhaltsbereich |
-| `.schedule-matrix` | Matrix-Ansicht Container |
-| `.schedule-list` | Listen-Ansicht Container |
-| `.lesson-cell` | Einzelne Stunden-Zelle |
-| `.current-lesson` | Aktuelle Stunde |
-| `.next-lesson` | Nächste Stunde |
-| `.substitution` | Vertretungsstunde |
-| `.cancelled` | Ausgefallene Stunde |
-| `.break-time` | Pausenzeit |
-| `.no-lesson` | Freistunde |
+| Class | Description |
+|-------|-------------|
+| `.schedule-card` | Main container |
+| `.schedule-header` | Card header |
+| `.schedule-content` | Main content area |
+| `.schedule-matrix` | Matrix view container |
+| `.schedule-list` | List view container |
+| `.lesson-cell` | Individual lesson cell |
+| `.current-lesson` | Current lesson |
+| `.next-lesson` | Next lesson |
+| `.substitution` | Substitution lesson |
+| `.cancelled` | Cancelled lesson |
+| `.break-time` | Break time |
+| `.no-lesson` | Free period |
 
-## 🔄 Datenanbindung
+## 🔄 Data Binding
 
-### Entity-Attribute
+### Entity Attributes
 
-Die Card erwartet folgende Attribute vom Sensor:
+The card expects the following attributes from the sensor:
 
 ```javascript
-// Beispiel-Entity-State
+// Example Entity State
 {
-  "state": "Mathematik",
+  "state": "Mathematics",
   "attributes": {
     "student_name": "Marc Cedric Wunsch",
     "current_lesson": {
-      "subject": "Mathematik",
-      "teacher": "Herr Schmidt",
+      "subject": "Mathematics",
+      "teacher": "Mr. Schmidt",
       "room": "R204",
       "start_time": "09:45",
       "end_time": "10:30"
@@ -191,8 +191,8 @@ Die Card erwartet folgende Attribute vom Sensor:
         "class_hour": "1",
         "start_time": "08:00",
         "end_time": "08:45",
-        "subject": "Deutsch",
-        "teacher": "Frau Müller",
+        "subject": "German",
+        "teacher": "Mrs. Müller",
         "room": "R105"
       }
     ],
@@ -208,10 +208,10 @@ Die Card erwartet folgende Attribute vom Sensor:
 }
 ```
 
-### Daten-Transformation
+### Data Transformation
 
 ```javascript
-// In der Card-Implementierung
+// In card implementation
 _transformScheduleData(entity) {
   const attributes = entity.attributes;
   
@@ -225,9 +225,9 @@ _transformScheduleData(entity) {
 }
 ```
 
-## 🎭 UI-Komponenten
+## 🎭 UI Components
 
-### Matrix-Ansicht
+### Matrix View
 
 ```javascript
 _renderMatrixView(scheduleData) {
@@ -236,7 +236,7 @@ _renderMatrixView(scheduleData) {
       <table>
         <thead>
           <tr>
-            <th>Zeit</th>
+            <th>Time</th>
             ${this._renderDayHeaders(scheduleData)}
           </tr>
         </thead>
@@ -262,7 +262,7 @@ _renderTimeSlots(scheduleData) {
 }
 ```
 
-### Listen-Ansicht
+### List View
 
 ```javascript
 _renderListView(scheduleData) {
@@ -296,7 +296,7 @@ _renderLessonItem(lesson) {
         ${isSubstitution ? html`
           <div class="substitution-info">
             <mwc-icon>swap_horiz</mwc-icon>
-            Vertretung
+            Substitution
           </div>
         ` : ''}
       </div>
@@ -305,7 +305,7 @@ _renderLessonItem(lesson) {
 }
 ```
 
-### Kompakt-Ansicht
+### Compact View
 
 ```javascript
 _renderCompactView(scheduleData) {
@@ -316,7 +316,7 @@ _renderCompactView(scheduleData) {
     <div class="schedule-compact">
       ${currentLesson ? html`
         <div class="current-lesson-compact">
-          <div class="lesson-label">Jetzt:</div>
+          <div class="lesson-label">Now:</div>
           <div class="lesson-info">
             <span class="subject">${currentLesson.subject}</span>
             <span class="room">${currentLesson.room}</span>
@@ -324,12 +324,12 @@ _renderCompactView(scheduleData) {
           </div>
         </div>
       ` : html`
-        <div class="no-current-lesson">Kein Unterricht</div>
+        <div class="no-current-lesson">No lessons</div>
       `}
       
       ${nextLesson ? html`
         <div class="next-lesson-compact">
-          <div class="lesson-label">Als nächstes:</div>
+          <div class="lesson-label">Next:</div>
           <div class="lesson-info">
             <span class="subject">${nextLesson.subject}</span>
             <span class="room">${nextLesson.room}</span>
@@ -342,9 +342,9 @@ _renderCompactView(scheduleData) {
 }
 ```
 
-## 🔧 Card-Editor
+## 🔧 Card Editor
 
-### Editor-Konfiguration
+### Editor Configuration
 
 ```javascript
 // schulmanager-schedule-card-editor.js
@@ -479,7 +479,7 @@ customElements.define('schulmanager-schedule-card-editor', SchulmanagerScheduleC
 }
 ```
 
-### Mobile-Optimierungen
+### Mobile Optimizations
 
 ```javascript
 _isMobile() {
@@ -488,7 +488,7 @@ _isMobile() {
 
 _renderMobileOptimized(scheduleData) {
   if (this._isMobile() && this.config.view === 'weekly_matrix') {
-    // Automatisch zu daily_list wechseln auf Mobile
+    // Automatically switch to daily_list on mobile
     return this._renderDailyList(scheduleData);
   }
   
@@ -496,20 +496,20 @@ _renderMobileOptimized(scheduleData) {
 }
 ```
 
-## 🔄 Performance-Optimierung
+## 🔄 Performance Optimization
 
 ### Lazy Rendering
 
 ```javascript
 _shouldUpdate(changedProps) {
-  // Nur re-rendern wenn sich relevante Properties geändert haben
+  // Only re-render when relevant properties have changed
   if (changedProps.has('hass')) {
     const oldHass = changedProps.get('hass');
     if (oldHass) {
       const oldEntity = oldHass.states[this.config.entity];
       const newEntity = this.hass.states[this.config.entity];
       
-      // Nur updaten wenn sich Entity-State oder relevante Attribute geändert haben
+      // Only update when entity state or relevant attributes have changed
       return !oldEntity || 
              oldEntity.state !== newEntity.state ||
              JSON.stringify(oldEntity.attributes) !== JSON.stringify(newEntity.attributes);
@@ -539,7 +539,7 @@ _getCachedScheduleData(entity) {
   const scheduleData = this._transformScheduleData(entity);
   this._scheduleCache.set(cacheKey, scheduleData);
   
-  // Cache-Größe begrenzen
+  // Limit cache size
   if (this._scheduleCache.size > 10) {
     const firstKey = this._scheduleCache.keys().next().value;
     this._scheduleCache.delete(firstKey);
@@ -549,9 +549,9 @@ _getCachedScheduleData(entity) {
 }
 ```
 
-## 🌍 Internationalisierung
+## 🌍 Internationalization
 
-### Sprach-Support
+### Language Support
 
 ```javascript
 const TRANSLATIONS = {
@@ -567,7 +567,7 @@ const TRANSLATIONS = {
     time: 'Zeit',
     monday: 'Montag',
     tuesday: 'Dienstag',
-    // ... weitere Übersetzungen
+    // ... more translations
   },
   en: {
     current_lesson: 'Current Lesson',
@@ -581,7 +581,7 @@ const TRANSLATIONS = {
     time: 'Time',
     monday: 'Monday',
     tuesday: 'Tuesday',
-    // ... weitere Übersetzungen
+    // ... more translations
   }
 };
 
@@ -591,30 +591,30 @@ _translate(key) {
 }
 ```
 
-## 📚 Installation und Setup
+## 📚 Installation and Setup
 
-### HACS-Installation
+### HACS Installation
 
-1. **HACS öffnen** in Home Assistant
+1. **Open HACS** in Home Assistant
 2. **Integrations** → **Custom Repositories**
-3. **Repository hinzufügen**: `https://github.com/your-repo/schulmanager-online`
-4. **Kategorie**: Integration
-5. **Download** und **Restart** Home Assistant
+3. **Add Repository**: `https://github.com/your-repo/schulmanager-online`
+4. **Category**: Integration
+5. **Download** and **Restart** Home Assistant
 
-### Manuelle Installation
+### Manual Installation
 
 ```bash
-# Custom Components kopieren
+# Copy custom components
 cp -r custom_components/schulmanager_online /config/custom_components/
 
-# Card-Dateien kopieren
+# Copy card files
 mkdir -p /config/www/schulmanager_online/
 cp custom_components/schulmanager_online/www/* /config/www/schulmanager_online/
 
-# Home Assistant neu starten
+# Restart Home Assistant
 ```
 
-### Resource-Registration
+### Resource Registration
 
 ```yaml
 # configuration.yaml
@@ -624,9 +624,9 @@ lovelace:
       type: module
 ```
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
-- [Integration Architecture](Integration_Architecture.md) - Gesamtarchitektur
-- [Sensors Documentation](Sensors_Documentation.md) - Sensor-Details
-- [Development Setup](Development_Setup.md) - Entwicklungsumgebung
-- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problemlösungen
+- [Integration Architecture](Integration_Architecture.md) - Overall architecture
+- [Sensors Documentation](Sensors_Documentation.md) - Sensor details
+- [Development Setup](Development_Setup.md) - Development environment
+- [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions

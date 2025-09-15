@@ -1,32 +1,32 @@
-# Home Assistant Integration - Architektur
+# Home Assistant Integration - Architecture
 
-## 🏗️ Übersicht
+## 🏗️ Overview
 
-Die Schulmanager Online Integration für Home Assistant folgt den offiziellen HA-Entwicklungsrichtlinien und implementiert eine vollständige Custom Integration mit Sensoren, Kalender-Integration und Custom UI-Komponenten.
+The Schulmanager Online integration for Home Assistant follows official HA development guidelines and implements a complete custom integration with sensors, calendar integration, and custom UI components.
 
-## 📁 Projektstruktur
+## 📁 Project Structure
 
 ```
 custom_components/schulmanager_online/
 ├── __init__.py                 # Integration Entry Point
 ├── manifest.json              # HACS Integration Manifest
-├── const.py                   # Konstanten und Konfiguration
-├── config_flow.py             # UI-basierte Konfiguration
+├── const.py                   # Constants and Configuration
+├── config_flow.py             # UI-based Configuration
 ├── coordinator.py             # Data Update Coordinator
 ├── api.py                     # API Client
 ├── sensor.py                  # Sensor Entities
 ├── calendar.py                # Calendar Integration
-├── strings.json               # UI-Strings (Englisch)
+├── strings.json               # UI Strings (English)
 ├── translations/              # Multi-Language Support
-│   ├── de.json               # Deutsche Übersetzung
-│   ├── fr.json               # Französische Übersetzung
-│   └── ...                   # Weitere Sprachen
+│   ├── de.json               # German Translation
+│   ├── fr.json               # French Translation
+│   └── ...                   # Additional Languages
 └── www/                      # Custom Card Assets
     ├── schulmanager-schedule-card.js
     └── schulmanager-schedule-card-editor.js
 ```
 
-## 🔄 Datenfluss-Architektur
+## 🔄 Data Flow Architecture
 
 ```mermaid
 graph TD
@@ -47,7 +47,7 @@ graph TD
     K[Automatic Updates] --> C
 ```
 
-## 🧩 Komponenten-Details
+## 🧩 Component Details
 
 ### 1. Integration Entry Point (`__init__.py`)
 
@@ -75,11 +75,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 ```
 
-**Verantwortlichkeiten:**
-- Integration initialisieren
-- Coordinator erstellen und konfigurieren
-- Plattformen (Sensor, Calendar) laden
-- Fehlerbehandlung und Cleanup
+**Responsibilities:**
+- Initialize integration
+- Create and configure coordinator
+- Load platforms (Sensor, Calendar)
+- Error handling and cleanup
 
 ### 2. Data Update Coordinator (`coordinator.py`)
 
@@ -93,7 +93,7 @@ class SchulmanagerOnlineDataUpdateCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=15),  # Update alle 15 Minuten
+            update_interval=timedelta(minutes=15),  # Update every 15 minutes
         )
         
         self.session = async_get_clientsession(hass)
@@ -130,11 +130,11 @@ class SchulmanagerOnlineDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {exception}")
 ```
 
-**Verantwortlichkeiten:**
-- Regelmäßige Datenaktualisierung (alle 15 Minuten)
-- API-Calls koordinieren
-- Daten für alle Entitäten bereitstellen
-- Fehlerbehandlung und Retry-Logic
+**Responsibilities:**
+- Regular data updates (every 15 minutes)
+- Coordinate API calls
+- Provide data for all entities
+- Error handling and retry logic
 
 ### 3. Configuration Flow (`config_flow.py`)
 
@@ -192,28 +192,28 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 ```
 
-**Verantwortlichkeiten:**
-- UI-basierte Konfiguration
-- Credential-Validierung
-- Benutzerfreundliche Fehlermeldungen
-- Integration-Entry erstellen
+**Responsibilities:**
+- UI-based configuration
+- Credential validation
+- User-friendly error messages
+- Create integration entry
 
-## 📊 Sensor-Architektur
+## 📊 Sensor Architecture
 
-### Sensor-Typen
+### Sensor Types
 
-| Sensor | Beschreibung | Update-Frequenz |
-|--------|--------------|-----------------|
-| **Current Lesson** | Aktuelle Stunde | Alle 5 Minuten |
-| **Next Lesson** | Nächste Stunde | Alle 5 Minuten |
-| **Today's Lessons** | Alle heutigen Stunden | Alle 15 Minuten |
-| **Today's Changes** | Heutige Vertretungen | Alle 15 Minuten |
-| **Next School Day** | Nächster Schultag | Alle 15 Minuten |
-| **This Week** | Diese Woche | Stündlich |
-| **Next Week** | Nächste Woche | Stündlich |
-| **Changes Detected** | Änderungen erkannt | Bei Änderungen |
+| Sensor | Description | Update Frequency |
+|--------|-------------|------------------|
+| **Current Lesson** | Current lesson | Every 5 minutes |
+| **Next Lesson** | Next lesson | Every 5 minutes |
+| **Today's Lessons** | All today's lessons | Every 15 minutes |
+| **Today's Changes** | Today's substitutions | Every 15 minutes |
+| **Next School Day** | Next school day | Every 15 minutes |
+| **This Week** | This week | Hourly |
+| **Next Week** | Next week | Hourly |
+| **Changes Detected** | Changes detected | On changes |
 
-### Sensor-Implementierung
+### Sensor Implementation
 
 ```python
 class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
@@ -248,7 +248,7 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
             return self._get_current_lesson()
         elif self.sensor_type == "next_lesson":
             return self._get_next_lesson()
-        # ... weitere Sensor-Typen
+        # ... additional sensor types
     
     @property
     def extra_state_attributes(self):
@@ -269,7 +269,7 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         return attributes
 ```
 
-## 📅 Kalender-Integration
+## 📅 Calendar Integration
 
 ### Calendar Entity
 
@@ -301,7 +301,7 @@ class SchulmanagerOnlineCalendar(CoordinatorEntity, CalendarEntity):
                         end=datetime.combine(lesson_date,
                                            datetime.strptime(lesson["classHour"]["endTime"], "%H:%M").time()),
                         summary=f"{lesson['lesson']['subject']} - {lesson['lesson']['teacher']}",
-                        description=f"Raum: {lesson['lesson']['room']}",
+                        description=f"Room: {lesson['lesson']['room']}",
                     )
                     events.append(event)
         
@@ -350,9 +350,9 @@ class SchulmanagerScheduleCard extends LitElement {
 customElements.define('schulmanager-schedule-card', SchulmanagerScheduleCard);
 ```
 
-## 🔧 Konfiguration und Konstanten
+## 🔧 Configuration and Constants
 
-### Konstanten (`const.py`)
+### Constants (`const.py`)
 
 ```python
 # Domain
@@ -381,7 +381,7 @@ SENSOR_TYPES = {
         "icon": "mdi:clock-outline",
         "device_class": None,
     },
-    # ... weitere Sensor-Typen
+    # ... additional sensor types
 }
 
 # API URLs
@@ -390,12 +390,12 @@ LOGIN_URL = "https://login.schulmanager-online.de/api/login"
 API_URL = "https://login.schulmanager-online.de/api/calls"
 ```
 
-## 🌍 Internationalisierung
+## 🌍 Internationalization
 
-### String-Verwaltung
+### String Management
 
 ```python
-# strings.json (Englisch - Basis)
+# strings.json (English - Base)
 {
     "config": {
         "step": {
@@ -418,7 +418,7 @@ API_URL = "https://login.schulmanager-online.de/api/calls"
 ```
 
 ```python
-# translations/de.json (Deutsch)
+# translations/de.json (German)
 {
     "config": {
         "step": {
@@ -442,25 +442,25 @@ API_URL = "https://login.schulmanager-online.de/api/calls"
 
 ## 🔄 Lifecycle Management
 
-### Setup-Prozess
+### Setup Process
 
-1. **Config Entry Creation**: Benutzer konfiguriert Integration
-2. **Coordinator Initialization**: Data Update Coordinator wird erstellt
-3. **API Authentication**: Erste Authentifizierung mit API
-4. **Platform Setup**: Sensoren und Kalender werden geladen
-5. **Initial Data Fetch**: Erste Datenabfrage
-6. **Regular Updates**: Regelmäßige Updates starten
+1. **Config Entry Creation**: User configures integration
+2. **Coordinator Initialization**: Data Update Coordinator is created
+3. **API Authentication**: Initial authentication with API
+4. **Platform Setup**: Sensors and calendar are loaded
+5. **Initial Data Fetch**: First data query
+6. **Regular Updates**: Regular updates start
 
-### Update-Zyklen
+### Update Cycles
 
-| Komponente | Intervall | Trigger |
-|------------|-----------|---------|
-| **Coordinator** | 15 Minuten | Timer |
-| **Current/Next Lesson** | 5 Minuten | Timer |
-| **Schedule Changes** | Bei Änderung | Data Comparison |
-| **Token Refresh** | 55 Minuten | Token Expiry |
+| Component | Interval | Trigger |
+|-----------|----------|---------|
+| **Coordinator** | 15 minutes | Timer |
+| **Current/Next Lesson** | 5 minutes | Timer |
+| **Schedule Changes** | On change | Data Comparison |
+| **Token Refresh** | 55 minutes | Token Expiry |
 
-### Cleanup-Prozess
+### Cleanup Process
 
 ```python
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -480,23 +480,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 ```
 
-## 📊 Performance-Optimierungen
+## 📊 Performance Optimizations
 
-### Caching-Strategien
+### Caching Strategies
 
-1. **Student Data**: Einmalig bei Login, dann gecacht
-2. **Schedule Data**: 15-Minuten Cache mit Smart Updates
-3. **Token Management**: Automatische Erneuerung mit Buffer
-4. **API Rate Limiting**: Intelligent Request Batching
+1. **Student Data**: One-time at login, then cached
+2. **Schedule Data**: 15-minute cache with smart updates
+3. **Token Management**: Automatic renewal with buffer
+4. **API Rate Limiting**: Intelligent request batching
 
 ### Memory Management
 
-- **Lazy Loading**: Daten nur bei Bedarf laden
-- **Data Pruning**: Alte Daten automatisch entfernen
-- **Session Reuse**: HTTP-Session wiederverwenden
-- **Garbage Collection**: Explizite Cleanup-Routinen
+- **Lazy Loading**: Load data only when needed
+- **Data Pruning**: Automatically remove old data
+- **Session Reuse**: Reuse HTTP session
+- **Garbage Collection**: Explicit cleanup routines
 
-## 🚨 Fehlerbehandlung
+## 🚨 Error Handling
 
 ### Error Recovery
 
@@ -518,14 +518,14 @@ async def _async_update_data(self):
 
 ### Graceful Degradation
 
-- **Partial Data**: Bei teilweisen Fehlern verfügbare Daten anzeigen
-- **Offline Mode**: Letzte bekannte Daten verwenden
-- **User Feedback**: Klare Fehlermeldungen in UI
-- **Automatic Recovery**: Automatische Wiederherstellung nach Fehlern
+- **Partial Data**: Show available data during partial failures
+- **Offline Mode**: Use last known data
+- **User Feedback**: Clear error messages in UI
+- **Automatic Recovery**: Automatic recovery after errors
 
-## 📚 Weiterführende Dokumentation
+## 📚 Further Documentation
 
 - [API Implementation](API_Implementation.md) - API Client Details
-- [Sensors Documentation](Sensors_Documentation.md) - Sensor-Implementierung
-- [Custom Card Documentation](Custom_Card_Documentation.md) - UI-Komponenten
-- [Configuration Guide](Configuration_Guide.md) - Benutzer-Konfiguration
+- [Sensors Documentation](Sensors_Documentation.md) - Sensor Implementation
+- [Custom Card Documentation](Custom_Card_Documentation.md) - UI Components
+- [Configuration Guide](Configuration_Guide.md) - User Configuration

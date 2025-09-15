@@ -1,27 +1,27 @@
-# Home Assistant Automationen - Schulmanager Online Integration
+# Home Assistant Automations - Schulmanager Online Integration
 
-## 🎯 Übersicht
+## 🎯 Overview
 
-Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager Online Integration. Alle Beispiele nutzen die neuen einheitlichen Sensor-Attribute, insbesondere das `subject_sanitized` Feld für saubere Fächernamen.
+This documentation shows practical automation examples for the Schulmanager Online integration. All examples use the new unified sensor attributes, especially the `subject_sanitized` field for clean subject names.
 
-## 📢 Sprachansagen (TTS - Text-to-Speech)
+## 📢 Voice Announcements (TTS - Text-to-Speech)
 
-### 1. Morgendliche Schulansage (Alexa)
+### 1. Morning School Announcement (Alexa)
 
-**Zweck**: Täglich um 07:10 Uhr werden die heutigen Schulfächer über Alexa angesagt, aber nur an Werktagen und wenn Unterricht stattfindet.
+**Purpose**: Daily at 07:10, today's school subjects are announced via Alexa, but only on weekdays and when there are classes.
 
 ```yaml
-- id: schulansage_student_werktags_0710
-  alias: Schulansage Student (werktags 07:10)
-  description: Werktags um 07:10 Alexa-Ansage mit den heutigen Schulfächern,
-    wenn Unterricht vorhanden ist.
+- id: school_announcement_student_weekdays_0710
+  alias: School Announcement Student (weekdays 07:10)
+  description: Weekday announcement at 07:10 with today's school subjects via Alexa,
+    when classes are available.
   
   triggers:
   - trigger: time
     at: 07:10:00
   
   conditions:
-  # Nur an Werktagen
+  # Only on weekdays
   - condition: time
     weekday:
     - mon
@@ -30,11 +30,11 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
     - thu
     - fri
   
-  # Prüfen ob heute Unterricht ist (Sensor-State > 0)
+  # Check if there are classes today (sensor state > 0)
   - condition: template
     value_template: '{{ states("sensor.lessons_today_student_name")|int(0) > 0 }}'
   
-  # Zusätzliche Prüfung: Lessons-Attribut existiert und ist nicht leer
+  # Additional check: lessons attribute exists and is not empty
   - condition: template
     value_template: >
       {% set lessons = state_attr("sensor.lessons_today_student_name","lessons") %}
@@ -44,41 +44,41 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
   - action: notify.alexa_media
     data:
       target:
-      - media_player.alexa_kinderzimmer
+      - media_player.alexa_bedroom
       data:
         type: tts
       message: >
         <speak>
           {% set lessons = (state_attr('sensor.lessons_today_student_name','lessons') or []) | sort(attribute='class_hour') %}
           {% set subjects = lessons | map(attribute='subject_sanitized') | list %}
-          Guten Morgen! <break time="400ms"/>
-          Heute hast Du folgende Fächer:
+          Good morning! <break time="400ms"/>
+          Today you have the following subjects:
           {{ subjects | join(', ') }}.
           <break time="300ms"/>
-          Bereite am besten jetzt Deine Sachen vor. Viel Spaß und Erfolg in der Schule!
+          Better prepare your things now. Have fun and success at school!
         </speak>
   
   mode: single
 ```
 
-**Erklärung der Automation:**
+**Automation Explanation:**
 
-1. **Trigger**: Täglich um 07:10 Uhr
-2. **Bedingungen**:
-   - Nur Montag bis Freitag (Werktage)
-   - Sensor-State > 0 (heute ist Unterricht)
-   - Lessons-Array existiert und ist nicht leer
-3. **Aktion**: 
-   - Sortiert Stunden nach `class_hour` (Reihenfolge)
-   - Extrahiert `subject_sanitized` für saubere Fächernamen
-   - Spricht die Fächer über Alexa aus
+1. **Trigger**: Daily at 07:10
+2. **Conditions**:
+   - Only Monday through Friday (weekdays)
+   - Sensor state > 0 (classes today)
+   - Lessons array exists and is not empty
+3. **Action**: 
+   - Sorts lessons by `class_hour` (chronological order)
+   - Extracts `subject_sanitized` for clean subject names
+   - Announces subjects via Alexa
 
-### 2. Erweiterte Morgenansage mit Details
+### 2. Extended Morning Announcement with Details
 
 ```yaml
-- id: schulansage_detailliert_werktags_0715
-  alias: Detaillierte Schulansage (werktags 07:15)
-  description: Erweiterte Ansage mit ersten 3 Stunden und Vertretungen
+- id: detailed_school_announcement_weekdays_0715
+  alias: Detailed School Announcement (weekdays 07:15)
+  description: Extended announcement with first 3 lessons and substitutions
   
   triggers:
   - trigger: time
@@ -93,7 +93,7 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
   actions:
   - action: notify.alexa_media
     data:
-      target: [media_player.alexa_wohnzimmer]
+      target: [media_player.alexa_living_room]
       data:
         type: tts
       message: >
@@ -101,24 +101,24 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
           {% set lessons = (state_attr('sensor.lessons_today_student_name','lessons') or []) | sort(attribute='class_hour') %}
           {% set changes = (state_attr('sensor.changes_today_student_name','changes') or []) %}
           
-          Guten Morgen! <break time="500ms"/>
+          Good morning! <break time="500ms"/>
           
           {% if lessons|length > 0 %}
-            Heute sind {{ lessons|length }} Stunden geplant.
+            Today {{ lessons|length }} lessons are scheduled.
             <break time="400ms"/>
             
-            Die ersten drei Stunden sind:
+            The first three lessons are:
             {% for lesson in lessons[:3] %}
-              {{ loop.index }}. Stunde: {{ lesson.subject_sanitized }}
-              {% if lesson.is_substitution %} (Vertretung){% endif %}
+              {{ loop.index }}. Period: {{ lesson.subject_sanitized }}
+              {% if lesson.is_substitution %} (Substitution){% endif %}
               <break time="200ms"/>
             {% endfor %}
             
             {% if changes|length > 0 %}
               <break time="400ms"/>
-              Achtung! Es gibt {{ changes|length }} Änderung{% if changes|length > 1 %}en{% endif %} heute:
+              Attention! There are {{ changes|length }} change{% if changes|length > 1 %}s{% endif %} today:
               {% for change in changes %}
-                {{ change.subject_sanitized }} in der {{ change.class_hour }}. Stunde
+                {{ change.subject_sanitized }} in the {{ change.class_hour }}. period
                 {% if change.comment %} - {{ change.comment }}{% endif %}
                 <break time="200ms"/>
               {% endfor %}
@@ -126,20 +126,20 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
           {% endif %}
           
           <break time="400ms"/>
-          Einen schönen Schultag!
+          Have a great school day!
         </speak>
   
   mode: single
 ```
 
-## 📱 Benachrichtigungen
+## 📱 Notifications
 
-### 3. Push-Benachrichtigung bei Vertretungen
+### 3. Push Notification for Substitutions
 
 ```yaml
-- id: vertretung_benachrichtigung
-  alias: Benachrichtigung bei Vertretungen
-  description: Sendet Push-Benachrichtigung wenn neue Vertretungen erkannt werden
+- id: substitution_notification
+  alias: Notification for Substitutions
+  description: Sends push notification when new substitutions are detected
   
   triggers:
   - trigger: state
@@ -156,84 +156,84 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
   actions:
   - action: notify.mobile_app_smartphone
     data:
-      title: "📚 Schulmanager: Neue Vertretungen"
+      title: "📚 Schulmanager: New Substitutions"
       message: >
         {% set changes = state_attr('sensor.changes_detected_student_name', 'changes') or [] %}
         {% if changes|length == 1 %}
-          Eine neue Vertretung wurde erkannt:
+          A new substitution was detected:
         {% else %}
-          {{ changes|length }} neue Vertretungen wurden erkannt:
+          {{ changes|length }} new substitutions were detected:
         {% endif %}
         {% for change in changes[:3] %}
-          • {{ change.current.subject_sanitized if change.current else 'Unbekannt' }}
-          {% if change.current and change.current.class_hour %} ({{ change.current.class_hour }}. Stunde){% endif %}
+          • {{ change.current.subject_sanitized if change.current else 'Unknown' }}
+          {% if change.current and change.current.class_hour %} ({{ change.current.class_hour }}. period){% endif %}
         {% endfor %}
         {% if changes|length > 3 %}
-          ... und {{ changes|length - 3 }} weitere
+          ... and {{ changes|length - 3 }} more
         {% endif %}
       data:
         actions:
         - action: "open_ha"
-          title: "Details anzeigen"
+          title: "Show Details"
         tag: "schulmanager_changes"
         group: "schulmanager"
   
   mode: single
 ```
 
-### 4. Tägliche Zusammenfassung am Vorabend
+### 4. Daily Summary in the Evening
 
 ```yaml
-- id: schulvorschau_abends
-  alias: Schulvorschau für morgen (20:00)
-  description: Abendliche Zusammenfassung der morgigen Schulfächer
+- id: school_preview_evening
+  alias: School Preview for Tomorrow (20:00)
+  description: Evening summary of tomorrow's school subjects
   
   triggers:
   - trigger: time
     at: "20:00:00"
   
   conditions:
-  # Nur wenn morgen ein Schultag ist
+  # Only if tomorrow is a school day
   - condition: template
     value_template: >
       {% set tomorrow = (now() + timedelta(days=1)).strftime('%A') %}
       {{ tomorrow in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] }}
   
-  # Nur wenn morgen Unterricht ist
+  # Only if there are classes tomorrow
   - condition: template
     value_template: '{{ states("sensor.lessons_tomorrow_student_name")|int(0) > 0 }}'
   
   actions:
   - action: notify.family_devices
     data:
-      title: "📅 Schule morgen"
+      title: "📅 School Tomorrow"
       message: >
         {% set lessons = (state_attr('sensor.lessons_tomorrow_student_name','lessons') or []) | sort(attribute='class_hour') %}
         {% set subjects = lessons | map(attribute='subject_sanitized') | unique | list %}
         {% set changes = (state_attr('sensor.changes_today_student_name','changes') or []) %}
         
-        Morgen stehen {{ lessons|length }} Stunden auf dem Plan:
+        Tomorrow {{ lessons|length }} periods are scheduled:
         {{ subjects | join(', ') }}
         
         {% if changes|length > 0 %}
         
-        ⚠️ Achtung: {{ changes|length }} Vertretung{% if changes|length > 1 %}en{% endif %} für morgen!
+        ⚠️ Attention: {{ changes|length }} substitution{% if changes|length > 1 %}s{% endif %} for tomorrow!
         {% endif %}
         
-        Schulbeginn: {{ lessons[0].time.split('-')[0] if lessons else 'Unbekannt' }}
+        School starts: {{ lessons[0].time.split('-')[0] if lessons else 'Unknown' }}
       data:
-        tag: "schulvorschau"
+        tag: "school_preview"
         group: "schulmanager"
 ```
 
 ## 🏠 Smart Home Integration
 
-### 5. Automatisches Licht am Morgen (nur bei Schule)
+### 5. Automatic Light in the Morning (only on school days)
 
 ```yaml
-- id: morgenlicht_schultage
-  alias: Morgenlicht an Schultagen
-  description: Schaltet das Kinderzimmerlicht ein, aber nur wenn heute Schule ist
+- id: morning_light_school_days
+  alias: Morning Light on School Days
+  description: Turns on bedroom light, but only when there's school today
   
   triggers:
   - trigger: time
@@ -245,35 +245,35 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
   - condition: template
     value_template: '{{ states("sensor.lessons_today_student_name")|int(0) > 0 }}'
   - condition: state
-    entity_id: light.kinderzimmer
+    entity_id: light.bedroom
     state: 'off'
   
   actions:
   - action: light.turn_on
     target:
-      entity_id: light.kinderzimmer
+      entity_id: light.bedroom
     data:
       brightness_pct: 30
-      color_temp: 400  # Warmes Licht
+      color_temp: 400  # Warm light
   
   - delay: "00:00:30"
   
   - action: light.turn_on
     target:
-      entity_id: light.kinderzimmer
+      entity_id: light.bedroom
     data:
       brightness_pct: 80
-      transition: 30  # Langsam heller werden
+      transition: 30  # Slowly get brighter
   
   mode: single
 ```
 
-### 6. Schultasche-Erinnerung basierend auf Fächern
+### 6. School Bag Reminder Based on Subjects
 
 ```yaml
-- id: schultasche_erinnerung
-  alias: Schultasche-Erinnerung nach Fächern
-  description: Spezifische Erinnerungen basierend auf morgigen Fächern
+- id: school_bag_reminder
+  alias: School Bag Reminder by Subjects
+  description: Specific reminders based on tomorrow's subjects
   
   triggers:
   - trigger: time
@@ -286,7 +286,7 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
   actions:
   - action: notify.alexa_media
     data:
-      target: [media_player.alexa_kinderzimmer]
+      target: [media_player.alexa_bedroom]
       data:
         type: tts
       message: >
@@ -294,36 +294,36 @@ Diese Dokumentation zeigt praktische Automation-Beispiele für die Schulmanager 
           {% set lessons = (state_attr('sensor.lessons_tomorrow_student_name','lessons') or []) %}
           {% set subjects = lessons | map(attribute='subject_sanitized') | unique | list %}
           
-          Zeit, die Schultasche für morgen zu packen! <break time="500ms"/>
+          Time to pack your school bag for tomorrow! <break time="500ms"/>
           
-          Morgen hast Du: {{ subjects | join(', ') }}.
+          Tomorrow you have: {{ subjects | join(', ') }}.
           <break time="400ms"/>
           
-          {% if 'Sport' in subjects %}
-            Vergiss nicht Deine Sportsachen! <break time="300ms"/>
+          {% if 'Physical Education' in subjects %}
+            Don't forget your sports gear! <break time="300ms"/>
           {% endif %}
           
-          {% if 'Kunst' in subjects or 'Werken' in subjects %}
-            Denk an Deine Kunstmaterialien! <break time="300ms"/>
+          {% if 'Art' in subjects or 'Crafts' in subjects %}
+            Remember your art supplies! <break time="300ms"/>
           {% endif %}
           
-          {% if 'Mathematik' in subjects or 'Physik' in subjects %}
-            Pack Deinen Taschenrechner ein! <break time="300ms"/>
+          {% if 'Mathematics' in subjects or 'Physics' in subjects %}
+            Pack your calculator! <break time="300ms"/>
           {% endif %}
           
-          {% if 'Chemie' in subjects or 'Biologie' in subjects %}
-            Vergiss nicht Dein Laborbuch! <break time="300ms"/>
+          {% if 'Chemistry' in subjects or 'Biology' in subjects %}
+            Don't forget your lab notebook! <break time="300ms"/>
           {% endif %}
           
-          Viel Erfolg morgen in der Schule!
+          Good luck tomorrow at school!
         </speak>
   
   mode: single
 ```
 
-## 📊 Dashboard-Karten
+## 📊 Dashboard Cards
 
-### 7. Bedingte Dashboard-Anzeige
+### 7. Conditional Dashboard Display
 
 ```yaml
 # In Lovelace Dashboard
@@ -333,15 +333,15 @@ conditions:
     state_not: "0"
 card:
   type: entities
-  title: "🏫 Heute in der Schule"
+  title: "🏫 Today at School"
   entities:
     - type: custom:template-entity-row
       entity: sensor.lessons_today_student_name
-      name: "Stunden heute"
+      name: "Lessons today"
       state: >
         {% set lessons = state_attr('sensor.lessons_today_student_name','lessons') or [] %}
         {% set subjects = lessons | map(attribute='subject_sanitized') | unique | list %}
-        {{ lessons|length }} Stunden: {{ subjects | join(', ') }}
+        {{ lessons|length }} lessons: {{ subjects | join(', ') }}
     
     - type: conditional
       conditions:
@@ -350,57 +350,57 @@ card:
       row:
         type: custom:template-entity-row
         entity: sensor.changes_today_student_name
-        name: "⚠️ Vertretungen"
+        name: "⚠️ Substitutions"
         state: >
           {% set changes = state_attr('sensor.changes_today_student_name','changes') or [] %}
-          {{ changes|length }} Änderung{% if changes|length != 1 %}en{% endif %}
+          {{ changes|length }} change{% if changes|length != 1 %}s{% endif %}
 ```
 
-## 🔧 Utility-Funktionen
+## 🔧 Utility Functions
 
-### Template-Sensoren für erweiterte Funktionen
+### Template Sensors for Extended Functions
 
 ```yaml
 # configuration.yaml
 template:
   - sensor:
-      - name: "Nächste Schulstunde"
+      - name: "Next School Lesson"
         state: >
           {% set lessons = state_attr('sensor.lessons_today_student_name','lessons') or [] %}
           {% set now_time = now().strftime('%H:%M') %}
           {% for lesson in lessons | sort(attribute='class_hour') %}
             {% if lesson.time.split('-')[0] > now_time %}
-              {{ lesson.subject_sanitized }} um {{ lesson.time.split('-')[0] }}
+              {{ lesson.subject_sanitized }} at {{ lesson.time.split('-')[0] }}
               {% break %}
             {% endif %}
           {% else %}
-            Keine weiteren Stunden heute
+            No more lessons today
           {% endfor %}
         
-      - name: "Schulfächer heute (kurz)"
+      - name: "School Subjects Today (short)"
         state: >
           {% set lessons = state_attr('sensor.lessons_today_student_name','lessons') or [] %}
           {% set subjects = lessons | map(attribute='subject_abbreviation') | unique | list %}
-          {{ subjects | join(', ') if subjects else 'Keine Schule' }}
+          {{ subjects | join(', ') if subjects else 'No school' }}
         
-      - name: "Vertretungen heute (Anzahl)"
+      - name: "Substitutions Today (count)"
         state: >
           {% set lessons = state_attr('sensor.lessons_today_student_name','lessons') or [] %}
           {{ lessons | selectattr('is_substitution', 'equalto', true) | list | length }}
 ```
 
-## 💡 Tipps und Best Practices
+## 💡 Tips and Best Practices
 
-### Verwendung der verschiedenen Subject-Felder:
+### Using the Different Subject Fields:
 
-- **`subject`**: Für vollständige Anzeigen und Logs
-- **`subject_abbreviation`**: Für kompakte UI-Elemente  
-- **`subject_sanitized`**: Für Sprachausgabe und benutzerfreundliche Anzeigen
+- **`subject`**: For complete displays and logs
+- **`subject_abbreviation`**: For compact UI elements  
+- **`subject_sanitized`**: For voice output and user-friendly displays
 
-### Template-Debugging:
+### Template Debugging:
 
 ```yaml
-# Test-Template im Developer Tools
+# Test template in Developer Tools
 {% set lessons = state_attr('sensor.lessons_today_student_name','lessons') or [] %}
 {% for lesson in lessons %}
   Original: {{ lesson.subject }}
@@ -410,11 +410,11 @@ template:
 {% endfor %}
 ```
 
-### Fehlerbehandlung:
+### Error Handling:
 
-Verwende immer Fallbacks in Templates:
+Always use fallbacks in templates:
 ```yaml
 {% set lessons = (state_attr('sensor.lessons_today_student_name','lessons') or []) %}
 ```
 
-Alle Beispiele nutzen die neuen einheitlichen Sensor-Attribute und das `subject_sanitized` Feld für optimale Benutzerfreundlichkeit! 🎯
+All examples use the new unified sensor attributes and the `subject_sanitized` field for optimal user-friendliness! 🎯
