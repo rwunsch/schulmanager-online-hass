@@ -8,6 +8,41 @@ Die Schulmanager Online Integration stellt **16 verschiedene Sensor-Entitäten**
 - **4 Hausaufgaben-Sensoren** - Fällige und kommende Hausaufgaben
 - **4 Klassenarbeiten-Sensoren** - Anstehende Tests und Klassenarbeiten
 
+## 🔧 Konsistente Datenformatierung (Refactoring 2025)
+
+**Wichtige Änderung**: Alle Sensoren verwenden jetzt ein einheitliches Datenformat für Stunden-Attribute:
+
+### Einheitliche Fächerbehandlung
+- **`subject`**: Vollständiger Fächername (z.B. "Evangelische Religionslehre (konfessionell kooperativ)")
+- **`subject_abbreviation`**: Abkürzung (z.B. "EN")
+- **`subject_sanitized`**: Bereinigter Fächername ohne Klammern und Kommas (z.B. "Evangelische Religionslehre")
+
+### Standardisierte Stundenattribute
+Alle Stunden-Sensoren verwenden jetzt das gleiche Attributformat:
+```json
+{
+  "subject": "Vollständiger Fächername",
+  "subject_abbreviation": "Abkürzung",
+  "subject_sanitized": "Bereinigter Fächername",
+  "time": "08:00-08:45",
+  "room": "Raumbezeichnung",
+  "teacher": "Lehrerküzel",
+  "teacher_lastname": "Nachname",
+  "teacher_firstname": "Vorname",
+  "is_substitution": false,
+  "type": "regularLesson",
+  "comment": "",
+  "date": "2025-09-16",
+  "class_hour": "Stundennummer"
+}
+```
+
+**Behobene Inkonsistenzen**:
+- Alle Sensoren verwenden jetzt den vollständigen Fächernamen im `subject`-Feld
+- Einheitliche Zeitformatierung als "HH:MM-HH:MM"
+- Konsistente Lehrerinformationen mit Vollname und Kürzel
+- Reduzierte Code-Duplikation durch gemeinsame Formatierungsfunktionen
+
 ## 📊 Sensor-Übersicht
 
 ### Stundenplan-Sensoren
@@ -128,31 +163,37 @@ def _get_current_lesson(self):
 {
   "lessons": [
     {
-      "class_hour": "1",
-      "start_time": "08:00",
-      "end_time": "08:45",
-      "subject": "Mathematik",
-      "teacher": "Herr Schmidt",
-      "room": "R204",
-      "is_substitution": false
+      "subject": "Evangelische Religionslehre (konfessionell kooperativ)",
+      "subject_abbreviation": "EN",
+      "subject_sanitized": "Evangelische Religionslehre",
+      "time": "08:00-08:45",
+      "room": "RD208",
+      "teacher": "SliJ",
+      "teacher_lastname": "Schlipp",
+      "teacher_firstname": "Julia-Felicitas",
+      "is_substitution": false,
+      "type": "regularLesson",
+      "comment": "",
+      "date": "2025-09-16",
+      "class_hour": "1"
     },
     {
-      "class_hour": "2",
-      "start_time": "08:50",
-      "end_time": "09:35",
-      "subject": "Deutsch",
-      "teacher": "Frau Müller",
-      "room": "R105",
+      "subject": "Mathematik",
+      "subject_abbreviation": "M",
+      "subject_sanitized": "Mathematik",
+      "time": "08:50-09:35",
+      "room": "R204",
+      "teacher": "Sch",
+      "teacher_lastname": "Schmidt",
+      "teacher_firstname": "Hans",
       "is_substitution": true,
-      "substitution_info": {
-        "original_teacher": "Herr Weber",
-        "reason": "Krankheit"
-      }
+      "type": "changedLesson",
+      "comment": "Vertretung",
+      "date": "2025-09-16",
+      "class_hour": "2"
     }
   ],
-  "total_lessons": 6,
-  "substitutions_count": 1,
-  "date": "2025-09-14"
+  "count": 6
 }
 ```
 
@@ -171,26 +212,38 @@ def _get_current_lesson(self):
 {
   "changes": [
     {
-      "class_hour": "2",
-      "original_subject": "Geschichte",
-      "original_teacher": "Herr Weber",
-      "new_subject": "Deutsch",
-      "new_teacher": "Frau Müller",
-      "new_room": "R105",
-      "reason": "Krankheit",
-      "type": "substitution"
+      "subject": "Evangelische Religionslehre (konfessionell kooperativ)",
+      "subject_abbreviation": "EN",
+      "subject_sanitized": "Evangelische Religionslehre",
+      "time": "08:00-08:45",
+      "room": "RD208",
+      "teacher": "SliJ",
+      "teacher_lastname": "Schlipp",
+      "teacher_firstname": "Julia-Felicitas",
+      "is_substitution": true,
+      "type": "changedLesson",
+      "comment": "Vertretung für Frau Weber",
+      "date": "2025-09-16",
+      "class_hour": "1",
+      "original_teacher": "Web"
     },
     {
-      "class_hour": "6",
       "subject": "Sport",
-      "teacher": "Herr Klein",
-      "reason": "Ausfall wegen Hallensanierung",
-      "type": "cancellation"
+      "subject_abbreviation": "Sp",
+      "subject_sanitized": "Sport",
+      "time": "13:15-14:00",
+      "room": "",
+      "teacher": "",
+      "teacher_lastname": "",
+      "teacher_firstname": "",
+      "is_substitution": false,
+      "type": "cancelledLesson",
+      "comment": "Ausfall wegen Hallensanierung",
+      "date": "2025-09-16",
+      "class_hour": "6"
     }
   ],
-  "total_changes": 2,
-  "substitutions": 1,
-  "cancellations": 1
+  "count": 2
 }
 ```
 

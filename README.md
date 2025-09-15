@@ -228,34 +228,22 @@ schulmanager_online:
 
 ## 🧪 Development & Testing
 
-### Docker Compose Setup
+### Docker Testing Setup
 ```bash
 cd test-scripts
-make dev        # Complete development setup
-make start      # Start all services
-make logs       # View logs
-make test       # Run API tests
+docker compose up -d
 ```
 
 ### Available Services
 - **Home Assistant**: http://localhost:8123
-- **Code Server**: http://localhost:8080 (password: schulmanager123)
-- **Grafana**: http://localhost:3000 (admin/schulmanager123)
-- **Portainer**: http://localhost:9000
-- **pgAdmin**: http://localhost:5050
 
 ### API Testing
 ```bash
-# Quick test
-make test-quick
-
-# Full API test with structured output
-make test
-
-# Development environment
-make dev-setup
-source venv/bin/activate
-python standalone_api_test.py
+# Run API tests directly
+cd test-scripts
+python test_api_complete.py
+python test_schedule_api.py
+python test_homework_api.py
 ```
 
 ## 🐛 Troubleshooting
@@ -397,27 +385,14 @@ Exception: Login failed: 401
 ### Docker Development Issues
 
 #### Problem: File changes not reflected in container
-**Symptoms:**
-- Updated JavaScript files not loading
-- Old file sizes in logs (6902 bytes instead of ~8700 bytes)
-
 **Solution:**
-1. **Check volume mounts** in docker-compose.yml:
-   ```yaml
-   volumes:
-     - ../custom_components:/config/custom_components
-   ```
-
-2. **Restart container** to pick up changes:
+1. **Restart container** to pick up changes:
    ```bash
-   docker restart schulmanager-ha-test
-   # or
+   cd test-scripts
    docker compose restart homeassistant
    ```
 
-3. **Verify file permissions** and ownership
-
-4. **Clear browser cache** after container restart
+2. **Clear browser cache** after container restart
 
 ### General Debugging
 
