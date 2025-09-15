@@ -73,7 +73,130 @@ This documentation shows practical automation examples for the Schulmanager Onli
    - Extracts `subject_sanitized` for clean subject names
    - Announces subjects via Alexa
 
-### 2. Extended Morning Announcement with Details
+### 2. Dynamic Pre-School Announcement (Advanced)
+
+**Purpose**: Automatically announces today's subjects X minutes before the first lesson starts. The timing is configurable via a Home Assistant helper.
+
+**Prerequisites**: Create a helper in Home Assistant:
+- **Name**: `input_number.school_pre_notice_minutes`
+- **Minimum**: 0
+- **Maximum**: 180
+- **Step**: 1
+- **Unit**: `min` (optional, for display)
+- **Default**: 45
+
+```yaml
+- id: dynamic_pre_school_announcement
+  alias: Dynamic Pre-School Announcement
+  description: >
+    Announces today's subjects X minutes before first lesson starts.
+    Timing configurable via input_number.school_pre_notice_minutes helper.
+    Includes exam notifications.
+  
+  trigger:
+    - platform: template
+      value_template: >-
+        {% set minutes = states('input_number.school_pre_notice_minutes')|int(45) %}
+        {% set lessons = (state_attr('sensor.lessons_today_student_name','lessons') or [])
+           | sort(attribute='class_hour') %}
+        {% if lessons|length > 0 and lessons[0].time %}
+          {% set start_raw = lessons[0].time.split('-')[0] %}
+          {% set start = start_raw ~ (':00' if start_raw|length == 5 else '') %}
+          {% set dt = strptime((now().date()|string) ~ ' ' ~ start, '%Y-%m-%d %H:%M:%S') %}
+          {% set announce = as_timestamp(dt) - minutes*60 %}
+          {% set nowts = as_timestamp(now()) %}
+          {{ nowts >= announce and nowts < (announce + 60) }}
+        {% else %}
+          false
+        {% endif %}
+
+  condition:
+    - condition: time
+      weekday: [mon, tue, wed, thu, fri]
+    - condition: template
+      value_template: "{{ states('sensor.lessons_today_student_name')|int(0) > 0 }}"
+    - condition: template
+      value_template: >-
+        {% set lessons = state_attr('sensor.lessons_today_student_name','lessons') %}
+        {{ lessons is iterable and lessons|length > 0 }}
+
+  action:
+    - variables:
+        minutes_before: "{{ states('input_number.school_pre_notice_minutes')|int(45) }}"
+        lessons: "{{ (state_attr('sensor.lessons_today_student_name','lessons') or [])
+                     | sort(attribute='class_hour') }}"
+        # Extract clean subject names
+        subjects: >-
+          {% set s = lessons | map(attribute='subject_sanitized') | list %}
+          {{ s | reject('equalto', none) | reject('equalto', '') | list }}
+        subjects_str: >-
+          {% if (subjects|length) > 1 %}
+            {{ (subjects[:-1] | join(', ')) ~ ' and ' ~ subjects[-1] }}
+          {% else %}
+            {{ subjects|join('') }}
+          {% endif %}
+        # Get today's exams (if exam sensor exists)
+        exams_today: >-
+          {% set today = now().date()|string %}
+          {% set exams_all = state_attr('sensor.exams_today_student_name','exams') or [] %}
+          {{ exams_all | selectattr('date','equalto',today) | list }}
+        exam_subjects: >-
+          {% if exams_today|length > 0 %}
+            {% set s = exams_today | map(attribute='subject') | list %}
+            {% if s|length > 1 %}
+              {{ (s[:-1] | join(', ')) ~ ' and ' ~ s[-1] }}
+            {% else %}
+              {{ s|join('') }}
+            {% endif %}
+          {% else %}{% endif %}
+
+    - service: notify.alexa_media
+      data:
+        target:
+          - media_player.alexa_bedroom
+          - media_player.alexa_kitchen
+        data:
+          type: tts
+        message: >-
+          <speak>
+            Good morning! <break time="400ms"/>
+            Today you have the following subjects: {{ subjects_str }}.
+            {% if exams_today|length > 0 %}
+              <break time="300ms"/>
+              Important: You have an exam in {{ exam_subjects }} today!
+            {% endif %}
+            <break time="300ms"/>
+            School starts in {{ minutes_before }} minutes. Better prepare your things now!
+            <break time="200ms"/>
+            Have fun and success at school!
+          </speak>
+  
+  mode: single
+```
+
+**How it Works:**
+1. **Dynamic Timing**: Calculates when to announce based on first lesson start time minus configured minutes
+2. **Template Trigger**: Fires when current time matches the calculated announcement time
+3. **Smart Subject List**: Uses natural language ("Math, English and Science" vs "Math, English, Science")
+4. **Exam Integration**: Announces if there are exams today (requires exam sensor)
+5. **Configurable**: Change timing anytime via the helper without editing automation
+
+**Testing the Automation:**
+
+**Method A - Real Time Test (Recommended):**
+1. Set `input_number.school_pre_notice_minutes` so that "first lesson - X minutes" equals the next full minute
+2. Example: It's 08:14, first lesson at 08:45 → set to 30 (08:45 - 00:30 = 08:15)
+3. Wait until 08:15:00 - automation should trigger
+
+**Method B - Quick Test:**
+1. Adjust `input_number.school_pre_notice_minutes` until "first lesson - X" falls into the next minute
+2. Or temporarily modify the first lesson start time in your test data
+
+**Method C - TTS/Message Test:**
+1. Open the automation in Home Assistant
+2. Click "Execute" to skip trigger and test the announcement immediately
+
+### 3. Extended Morning Announcement with Details
 
 ```yaml
 - id: detailed_school_announcement_weekdays_0715
@@ -134,7 +257,7 @@ This documentation shows practical automation examples for the Schulmanager Onli
 
 ## 📱 Notifications
 
-### 3. Push Notification for Substitutions
+### 4. Push Notification for Substitutions
 
 ```yaml
 - id: substitution_notification
@@ -181,7 +304,7 @@ This documentation shows practical automation examples for the Schulmanager Onli
   mode: single
 ```
 
-### 4. Daily Summary in the Evening
+### 5. Daily Summary in the Evening
 
 ```yaml
 - id: school_preview_evening
@@ -228,7 +351,7 @@ This documentation shows practical automation examples for the Schulmanager Onli
 
 ## 🏠 Smart Home Integration
 
-### 5. Automatic Light in the Morning (only on school days)
+### 6. Automatic Light in the Morning (only on school days)
 
 ```yaml
 - id: morning_light_school_days
@@ -268,7 +391,7 @@ This documentation shows practical automation examples for the Schulmanager Onli
   mode: single
 ```
 
-### 6. School Bag Reminder Based on Subjects
+### 7. School Bag Reminder Based on Subjects
 
 ```yaml
 - id: school_bag_reminder
@@ -323,7 +446,7 @@ This documentation shows practical automation examples for the Schulmanager Onli
 
 ## 📊 Dashboard Cards
 
-### 7. Conditional Dashboard Display
+### 8. Conditional Dashboard Display
 
 ```yaml
 # In Lovelace Dashboard
