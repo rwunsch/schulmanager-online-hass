@@ -243,10 +243,50 @@ A lesson object contains the following structure:
 interface Lesson {
   date: string;                    // ISO date (YYYY-MM-DD)
   classHour: ClassHour;           // Class hour information
-  type: string;                   // Lesson type (e.g., "regularLesson")
-  actualLesson: ActualLesson;     // Detailed lesson information
+  type: LessonType;               // Lesson type (see LessonType enum below)
+  actualLesson?: ActualLesson;    // Detailed lesson information (for regular/changed lessons)
+  originalLessons?: ActualLesson[]; // Original lesson data (for cancelled/changed lessons)
+  event?: EventDetails;           // Event information (for event type lessons)
+  comment?: string;               // Additional comments
+  isCancelled?: boolean;          // True if lesson is cancelled
+  isSubstitution?: boolean;       // True if lesson is a substitution
+  isNew?: boolean;                // True if lesson is newly added
 }
 ```
+
+### Lesson Types
+
+The API supports several lesson types that indicate the nature of the lesson:
+
+```typescript
+enum LessonType {
+  "regularLesson"    // Normal scheduled lesson
+  "cancelledLesson"  // Lesson that has been cancelled
+  "changedLesson"    // Lesson with substitution/changes
+  "event"           // Special event or activity
+}
+```
+
+#### Lesson Type Details
+
+| Type | Description | Contains | Use Case |
+|------|-------------|----------|----------|
+| `regularLesson` | Normal scheduled lesson | `actualLesson` | Standard daily lessons |
+| `cancelledLesson` | Cancelled lesson | `originalLessons`, `isCancelled: true` | Lessons that are cancelled without replacement |
+| `changedLesson` | Modified lesson | `actualLesson`, `originalLessons`, `isSubstitution: true` | Teacher substitutions, room changes |
+| `event` | Special event/activity | `event` object | School events, special activities, trips |
+
+#### Handling Multiple Entries
+
+**Important**: When lessons are cancelled and replaced (e.g., by school events), the API returns **multiple entries for the same time slot**:
+
+1. **Cancelled Lesson Entry**: `type: "cancelledLesson"` with original lesson data
+2. **Replacement Entry**: `type: "event"` with event details
+
+This allows applications to:
+- Show what was originally planned (crossed out)
+- Display the replacement activity
+- Track schedule changes for notifications
 
 ### Class Hour Object
 
@@ -303,6 +343,19 @@ interface Teacher {
 }
 ```
 
+### Event Details Object
+
+```typescript
+interface EventDetails {
+  text: string;                   // Event description/title
+  teachers: Teacher[];            // Teachers involved in the event
+  classes: Class[];               // Classes participating
+  rooms: Room[];                  // Rooms used (may be empty for events)
+  studentGroups: StudentGroup[];  // Student groups involved
+  absenceId?: number;             // Associated absence/event ID
+}
+```
+
 ### Class Hours Configuration Object
 
 ```typescript
@@ -320,9 +373,9 @@ interface ClassHourConfig {
 
 ## 📝 Response Examples
 
-### Successful Lessons Response
+### 1. Regular Lesson Response
 
-Based on actual API response from testing:
+Standard lesson with normal schedule:
 
 ```json
 {
@@ -373,6 +426,232 @@ Based on actual API response from testing:
             "lessonId": 18344522,
             "courseId": 7621162
           }
+        }
+      ]
+    }
+  ],
+  "systemStatusMessages": []
+}
+```
+
+### 2. Cancelled Lesson Response
+
+Lesson that has been cancelled (often paired with replacement event):
+
+```json
+{
+  "results": [
+    {
+      "status": 200,
+      "data": [
+        {
+          "date": "2025-09-19",
+          "comment": null,
+          "classHour": {
+            "id": 30168,
+            "number": "1"
+          },
+          "type": "cancelledLesson",
+          "originalLessons": [
+            {
+              "room": {
+                "id": 131223,
+                "name": "RSpoN2"
+              },
+              "subject": {
+                "id": 255690,
+                "abbreviation": "SP",
+                "name": "Sport",
+                "isPseudoSubject": false
+              },
+              "teachers": [
+                {
+                  "id": 370267,
+                  "abbreviation": "VolN",
+                  "firstname": "Nicole",
+                  "lastname": "Vollmer"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 444612,
+                  "name": "7f"
+                }
+              ],
+              "studentGroups": [
+                {
+                  "id": 3575180,
+                  "name": "7f",
+                  "classId": 444612
+                }
+              ],
+              "subjectLabel": "SP",
+              "lessonId": 18344545,
+              "courseId": 7621169
+            }
+          ],
+          "isCancelled": true
+        }
+      ]
+    }
+  ],
+  "systemStatusMessages": []
+}
+```
+
+### 3. Event Response
+
+Special event or activity (often replaces cancelled lessons):
+
+```json
+{
+  "results": [
+    {
+      "status": 200,
+      "data": [
+        {
+          "date": "2025-09-19",
+          "classHour": {
+            "id": 30168,
+            "number": "1"
+          },
+          "type": "event",
+          "event": {
+            "text": "Klassenlehrerunterricht und Westenergielauf",
+            "teachers": [
+              {
+                "id": 370267,
+                "abbreviation": "VolN",
+                "firstname": "Nicole",
+                "lastname": "Vollmer"
+              },
+              {
+                "id": 370251,
+                "abbreviation": "StuF",
+                "firstname": "Frank",
+                "lastname": "Stuckstedte"
+              }
+            ],
+            "classes": [
+              {
+                "id": 444612,
+                "name": "7f"
+              }
+            ],
+            "rooms": [],
+            "studentGroups": [
+              {
+                "id": 3575180,
+                "name": "7f",
+                "classId": 444612
+              }
+            ],
+            "absenceId": 2838410
+          },
+          "isSubstitution": false,
+          "isNew": true
+        }
+      ]
+    }
+  ],
+  "systemStatusMessages": []
+}
+```
+
+### 4. Changed Lesson Response
+
+Lesson with substitution or room change:
+
+```json
+{
+  "results": [
+    {
+      "status": 200,
+      "data": [
+        {
+          "date": "2025-09-15",
+          "comment": "Raumwechsel beachten",
+          "classHour": {
+            "id": 30171,
+            "number": "4"
+          },
+          "type": "changedLesson",
+          "actualLesson": {
+            "room": {
+              "id": 131134,
+              "name": "RD205"
+            },
+            "subject": {
+              "id": 255690,
+              "abbreviation": "SP",
+              "name": "Sport",
+              "isPseudoSubject": false
+            },
+            "teachers": [
+              {
+                "id": 370258,
+                "abbreviation": "LenJ",
+                "firstname": "Jana",
+                "lastname": "Lenkenhoff"
+              }
+            ],
+            "classes": [
+              {
+                "id": 444612,
+                "name": "7f"
+              }
+            ],
+            "studentGroups": [
+              {
+                "id": 3575180,
+                "name": "7f",
+                "classId": 444612
+              }
+            ],
+            "comment": "Raumwechsel beachten",
+            "subjectLabel": "SP",
+            "substitutionId": 35035100
+          },
+          "originalLessons": [
+            {
+              "room": {
+                "id": 131223,
+                "name": "RSpoN2"
+              },
+              "subject": {
+                "id": 255690,
+                "abbreviation": "SP",
+                "name": "Sport",
+                "isPseudoSubject": false
+              },
+              "teachers": [
+                {
+                  "id": 370267,
+                  "abbreviation": "VolN",
+                  "firstname": "Nicole",
+                  "lastname": "Vollmer"
+                }
+              ],
+              "classes": [
+                {
+                  "id": 444612,
+                  "name": "7f"
+                }
+              ],
+              "studentGroups": [
+                {
+                  "id": 3575180,
+                  "name": "7f",
+                  "classId": 444612
+                }
+              ],
+              "subjectLabel": "SP",
+              "lessonId": 18344544,
+              "courseId": 7621169
+            }
+          ],
+          "isSubstitution": true,
+          "isNew": false
         }
       ]
     }
