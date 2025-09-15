@@ -15,18 +15,6 @@ from .api import SchulmanagerAPI, SchulmanagerAPIError
 from .const import (
     CONF_LOOKAHEAD_WEEKS, 
     DEFAULT_LOOKAHEAD_WEEKS, 
-    CONF_LESSON_DURATION,
-    CONF_SHORT_BREAK,
-    CONF_LONG_BREAK_1,
-    CONF_LONG_BREAK_2,
-    CONF_LUNCH_BREAK,
-    CONF_SCHOOL_START_TIME,
-    DEFAULT_LESSON_DURATION,
-    DEFAULT_SHORT_BREAK,
-    DEFAULT_LONG_BREAK_1,
-    DEFAULT_LONG_BREAK_2,
-    DEFAULT_LUNCH_BREAK,
-    DEFAULT_SCHOOL_START_TIME,
     DOMAIN
 )
 
@@ -48,23 +36,7 @@ STEP_OPTIONS_DATA_SCHEMA = vol.Schema(
         vol.Optional("include_exams", default=True): bool,
         vol.Optional("include_letters", default=True): bool,
         vol.Optional("include_grades", default=False): bool,
-        # Schedule timing configuration
-        vol.Optional(CONF_LESSON_DURATION, default=DEFAULT_LESSON_DURATION): vol.All(
-            vol.Coerce(int), vol.Range(min=30, max=90)
-        ),
-        vol.Optional(CONF_SHORT_BREAK, default=DEFAULT_SHORT_BREAK): vol.All(
-            vol.Coerce(int), vol.Range(min=0, max=30)
-        ),
-        vol.Optional(CONF_LONG_BREAK_1, default=DEFAULT_LONG_BREAK_1): vol.All(
-            vol.Coerce(int), vol.Range(min=0, max=60)
-        ),
-        vol.Optional(CONF_LONG_BREAK_2, default=DEFAULT_LONG_BREAK_2): vol.All(
-            vol.Coerce(int), vol.Range(min=0, max=60)
-        ),
-        vol.Optional(CONF_LUNCH_BREAK, default=DEFAULT_LUNCH_BREAK): vol.All(
-            vol.Coerce(int), vol.Range(min=0, max=120)
-        ),
-        vol.Optional(CONF_SCHOOL_START_TIME, default=DEFAULT_SCHOOL_START_TIME): str,
+        # NOTE: Schedule timing configuration removed - API provides class hours
     }
 )
 
@@ -213,31 +185,7 @@ class SchulmanagerOnlineOptionsFlow(config_entries.OptionsFlow):
                     "include_grades",
                     default=current_options.get("include_grades", False)
                 ): bool,
-                # Schedule timing configuration
-                vol.Optional(
-                    CONF_LESSON_DURATION,
-                    default=current_options.get(CONF_LESSON_DURATION, DEFAULT_LESSON_DURATION)
-                ): vol.All(vol.Coerce(int), vol.Range(min=30, max=90)),
-                vol.Optional(
-                    CONF_SHORT_BREAK,
-                    default=current_options.get(CONF_SHORT_BREAK, DEFAULT_SHORT_BREAK)
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=30)),
-                vol.Optional(
-                    CONF_LONG_BREAK_1,
-                    default=current_options.get(CONF_LONG_BREAK_1, DEFAULT_LONG_BREAK_1)
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
-                vol.Optional(
-                    CONF_LONG_BREAK_2,
-                    default=current_options.get(CONF_LONG_BREAK_2, DEFAULT_LONG_BREAK_2)
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
-                vol.Optional(
-                    CONF_LUNCH_BREAK,
-                    default=current_options.get(CONF_LUNCH_BREAK, DEFAULT_LUNCH_BREAK)
-                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
-                vol.Optional(
-                    CONF_SCHOOL_START_TIME,
-                    default=current_options.get(CONF_SCHOOL_START_TIME, DEFAULT_SCHOOL_START_TIME)
-                ): str,
+                # NOTE: Schedule timing configuration removed - API provides class hours
             }
         )
 

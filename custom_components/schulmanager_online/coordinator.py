@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import SchulmanagerAPI, SchulmanagerAPIError
 from .const import DEFAULT_LOOKAHEAD_WEEKS, DOMAIN, UPDATE_INTERVAL
+from .free_hours_utils import add_free_hours_to_schedule, parse_time_to_minutes, format_minutes_to_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,17 +66,31 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     continue
                 
                 try:
-                    # Get schedule
+                    # Get schedule and class hours
                     schedule_data = await self.api.get_schedule(
                         student_id, start_date, end_date
                     )
                     
+                    # Get class hours configuration (for free hour detection)
+                    try:
+                        class_hours_data = await self.api.get_class_hours()
+                        data["class_hours"] = class_hours_data
+                    except Exception as e:
+                        _LOGGER.warning(f"Failed to fetch class hours: {e}")
+                        data["class_hours"] = []
+                    
+                    # Process regular schedule data
                     processed_schedule = self._process_schedule_data(schedule_data)
+                    
+                    # Add free hours using centralized utility
+                    processed_schedule = add_free_hours_to_schedule(
+                        processed_schedule, data.get("class_hours", []), start_date, end_date
+                    )
                     
                     student_data = {
                         "info": student,
                         "schedule": processed_schedule,
-                        "schedule_config": self._get_schedule_config(),
+                        # NOTE: schedule_config removed - timing now comes from API class_hours
                         "current_lesson": self._get_current_lesson(processed_schedule),
                         "next_lesson": self._get_next_lesson(processed_schedule),
                         "today_lessons": self._get_today_lessons(processed_schedule),
@@ -159,6 +174,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         
         return processed_lessons
 
+
     def _process_lesson(self, lesson: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Process a single lesson."""
         try:
@@ -167,10 +183,17 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             class_hour = lesson.get("classHour", {})
             
             # Extract basic information
+            class_hour_num = class_hour.get("number")
+            if class_hour_num:
+                try:
+                    class_hour_num = int(class_hour_num)
+                except (ValueError, TypeError):
+                    class_hour_num = None
+            
             processed = {
                 "id": actual_lesson.get("lessonId", lesson.get("id")),
                 "date": lesson.get("date"),
-                "class_hour_number": class_hour.get("number"),
+                "class_hour_number": class_hour_num,
                 "start_time": class_hour.get("from"),
                 "end_time": class_hour.get("until"),
                 "subject": actual_lesson.get("subject", {}).get("name", ""),
@@ -272,23 +295,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         """Get all students."""
         return self.students
 
-    def _get_schedule_config(self) -> Dict[str, Any]:
-        """Get schedule timing configuration from options."""
-        from .const import (
-            CONF_LESSON_DURATION, CONF_SHORT_BREAK, CONF_LONG_BREAK_1,
-            CONF_LONG_BREAK_2, CONF_LUNCH_BREAK, CONF_SCHOOL_START_TIME,
-            DEFAULT_LESSON_DURATION, DEFAULT_SHORT_BREAK, DEFAULT_LONG_BREAK_1,
-            DEFAULT_LONG_BREAK_2, DEFAULT_LUNCH_BREAK, DEFAULT_SCHOOL_START_TIME
-        )
-        
-        return {
-            "lesson_duration_minutes": self.options.get(CONF_LESSON_DURATION, DEFAULT_LESSON_DURATION),
-            "short_break_minutes": self.options.get(CONF_SHORT_BREAK, DEFAULT_SHORT_BREAK),
-            "long_break_1_minutes": self.options.get(CONF_LONG_BREAK_1, DEFAULT_LONG_BREAK_1),
-            "long_break_2_minutes": self.options.get(CONF_LONG_BREAK_2, DEFAULT_LONG_BREAK_2),
-            "lunch_break_minutes": self.options.get(CONF_LUNCH_BREAK, DEFAULT_LUNCH_BREAK),
-            "school_start_time": self.options.get(CONF_SCHOOL_START_TIME, DEFAULT_SCHOOL_START_TIME),
-        }
+    # NOTE: _get_schedule_config() removed - timing now comes from API class_hours data
 
     def _enhance_lesson_with_calculated_times(self, lesson: Dict[str, Any]) -> Dict[str, Any]:
         """Enhance lesson with calculated times and hour numbers if missing."""
@@ -298,16 +305,13 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             lesson.get("end_time")):
             return lesson
             
-        # Get schedule configuration
-        schedule_config = self._get_schedule_config()
-        
         # If class_hour_number is missing, leave it as None (like AGs, special events)
         # These lessons will use their actual start_time and end_time directly
         
         # Only calculate times if we have a class_hour_number but missing times
         if lesson.get("class_hour_number") and (not lesson.get("start_time") or not lesson.get("end_time")):
             hour_number = lesson.get("class_hour_number")
-            start_time, end_time = self._calculate_times_for_hour(hour_number, schedule_config)
+            start_time, end_time = self._calculate_times_for_hour(hour_number)
             lesson["start_time"] = start_time
             lesson["end_time"] = end_time
             _LOGGER.debug(f"Calculated times {start_time}-{end_time} for hour {hour_number}")
@@ -329,8 +333,8 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             
         return all_lessons
         
-    def _calculate_times_for_hour(self, hour_number, config: Dict[str, Any]) -> tuple[str, str]:
-        """Calculate start and end time for a given hour number."""
+    def _calculate_times_for_hour(self, hour_number) -> tuple[str, str]:
+        """Get start and end time for a given hour number from API class hours data."""
         try:
             # Convert hour_number to int if it's a string
             if isinstance(hour_number, str):
@@ -339,82 +343,48 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                 hour_number = 1
         except (ValueError, TypeError):
             hour_number = 1
-            
-        start_minutes = self._parse_time_to_minutes(config.get("school_start_time", "08:00"))
-        lesson_duration = config.get("lesson_duration_minutes", 45)
-        short_break = config.get("short_break_minutes", 5)
-        long_break_1 = config.get("long_break_1_minutes", 20)
-        long_break_2 = config.get("long_break_2_minutes", 10)
-        lunch_break = config.get("lunch_break_minutes", 45)
         
-        # Calculate accumulated time for this hour
-        for h in range(1, hour_number):
-            start_minutes += lesson_duration  # Previous lesson duration
-            
-            # Add appropriate break
-            if h == 2:
-                start_minutes += long_break_1  # After 2nd hour
-            elif h == 4:
-                start_minutes += long_break_2  # After 4th hour
-            elif h == 6:
-                start_minutes += lunch_break  # After 6th hour
-            else:
-                start_minutes += short_break  # Regular break
+        # Get class hours from API data
+        if self.data and "class_hours" in self.data:
+            class_hours = self.data["class_hours"]
+            for class_hour in class_hours:
+                if str(class_hour.get("number", "")) == str(hour_number):
+                    start_time = class_hour.get("from", "08:00:00")
+                    end_time = class_hour.get("until", "08:45:00")
+                    return start_time, end_time
         
-        # Calculate end time
-        end_minutes = start_minutes + lesson_duration
+        # Fallback to default times if API data not available (should not happen)
+        default_times = {
+            "1": ("08:00:00", "08:45:00"),
+            "2": ("08:48:00", "09:33:00"),
+            "3": ("09:53:00", "10:38:00"),
+            "4": ("10:43:00", "11:28:00"),
+            "5": ("11:38:00", "12:23:00"),
+            "6": ("12:28:00", "13:13:00"),
+            "7": ("14:08:00", "14:53:00"),
+            "8": ("14:58:00", "15:43:00"),
+            "9": ("15:48:00", "16:33:00"),
+            "10": ("16:38:00", "17:23:00"),
+            "11": ("17:28:00", "18:13:00"),
+        }
+        return default_times.get(str(hour_number), ("08:00:00", "08:45:00"))
         
-        return (
-            self._format_minutes_to_time(start_minutes),
-            self._format_minutes_to_time(end_minutes)
-        )
-        
-    def _parse_time_to_minutes(self, time_str: str) -> int:
-        """Convert time string (HH:MM) to minutes since midnight."""
-        try:
-            hours, minutes = map(int, time_str.split(':'))
-            return hours * 60 + minutes
-        except Exception:
-            return 8 * 60  # Default to 8:00 AM
-            
-    def _format_minutes_to_time(self, minutes: int) -> str:
-        """Convert minutes since midnight to time string (HH:MM:SS)."""
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}:00"
 
     def _assign_correct_hour_numbers(self, lessons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Assign correct hour numbers to lessons grouped by date."""
-        # Group lessons by date
-        lessons_by_date = {}
+        """Ensure lessons have correct times based on their API-provided period numbers."""
+        # The API already provides correct class_hour_number in classHour.number
+        # We should NOT reassign these numbers as they indicate the actual periods
+        # We just need to ensure times are correctly set from class hours data
+        
         for lesson in lessons:
-            date = lesson.get("date")
-            if date:
-                if date not in lessons_by_date:
-                    lessons_by_date[date] = []
-                lessons_by_date[date].append(lesson)
-        
-        # Process each date separately
-        updated_lessons = []
-        schedule_config = self._get_schedule_config()
-        
-        for date, date_lessons in lessons_by_date.items():
-            # Sort lessons by existing time if available
-            date_lessons.sort(key=lambda x: x.get("start_time") or "00:00:00")
-            
-            # Assign sequential hour numbers and recalculate times
-            for i, lesson in enumerate(date_lessons):
-                hour_number = i + 1
-                lesson["class_hour_number"] = hour_number
-                
-                # Recalculate times based on correct hour number  
-                start_time, end_time = self._calculate_times_for_hour(hour_number, schedule_config)
+            # Only update times if we have a valid class_hour_number from API
+            if lesson.get("class_hour_number") and not lesson.get("start_time"):
+                hour_number = lesson.get("class_hour_number")
+                start_time, end_time = self._calculate_times_for_hour(hour_number)
                 lesson["start_time"] = start_time
                 lesson["end_time"] = end_time
-                
-                updated_lessons.append(lesson)
         
-        return updated_lessons
+        return lessons
 
     def _get_current_lesson(self, lessons: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Get the currently active lesson."""

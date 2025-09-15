@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import SchulmanagerDataUpdateCoordinator
+from .free_hours_utils import is_free_hour, parse_time_to_minutes, format_minutes_to_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -406,6 +407,10 @@ class SchulmanagerOnlineCalendar(CoordinatorEntity, CalendarEntity):
     def _create_lesson_event(self, lesson: Dict[str, Any]) -> Optional[CalendarEvent]:
         """Create a calendar event from a lesson (processed data structure)."""
         try:
+            # Skip free hours - they don't need calendar entries
+            if is_free_hour(lesson):
+                return None
+                
             # Parse date - format is "2025-09-11"
             date_str = lesson.get("date")
             if not date_str:
@@ -644,67 +649,36 @@ class SchulmanagerOnlineCalendar(CoordinatorEntity, CalendarEntity):
             return None
 
     def _get_configurable_class_times(self, class_hour_number: str) -> tuple[str, str]:
-        """Get configurable class times based on hour number and schedule configuration."""
+        """Get class times from API data first, then fall back to calculated times."""
         try:
-            student_data = self.coordinator.get_student_data(self.student_id)
-            if not student_data or "schedule_config" not in student_data:
-                # Fallback to default times
-                return DEFAULT_CLASS_TIMES.get(class_hour_number, ("08:00", "08:45"))
+            # First priority: Use actual class hours from API data
+            if self.coordinator.data and "class_hours" in self.coordinator.data:
+                class_hours = self.coordinator.data["class_hours"]
+                for class_hour in class_hours:
+                    if str(class_hour.get("number", "")) == str(class_hour_number):
+                        start_time = class_hour.get("from", "08:00:00")
+                        end_time = class_hour.get("until", "08:45:00")
+                        # Convert from HH:MM:SS to HH:MM format for calendar
+                        return start_time[:5], end_time[:5]
             
-            config = student_data["schedule_config"]
-            try:
-                hour = int(class_hour_number)
-                if hour < 1 or hour > 10:  # Invalid hour number
-                    raise ValueError(f"Invalid hour number: {hour}")
-            except (ValueError, TypeError):
-                # Fallback to default times for invalid hour numbers
-                return DEFAULT_CLASS_TIMES.get(class_hour_number, ("08:00", "08:45"))
-            
-            # Calculate start time based on configuration
-            start_minutes = self._parse_time_to_minutes(config.get("school_start_time", "08:00"))
-            lesson_duration = config.get("lesson_duration_minutes", 45)
-            short_break = config.get("short_break_minutes", 5)
-            long_break_1 = config.get("long_break_1_minutes", 20)
-            long_break_2 = config.get("long_break_2_minutes", 10)
-            lunch_break = config.get("lunch_break_minutes", 45)
-            
-            # Calculate accumulated time for each hour
-            for h in range(1, hour):
-                start_minutes += lesson_duration  # Previous lesson duration
-                
-                # Add appropriate break
-                if h == 2:
-                    start_minutes += long_break_1  # After 2nd hour
-                elif h == 4:
-                    start_minutes += long_break_2  # After 4th hour
-                elif h == 6:
-                    start_minutes += lunch_break  # After 6th hour
-                else:
-                    start_minutes += short_break  # Regular break
-            
-            # Calculate end time
-            end_minutes = start_minutes + lesson_duration
-            
-            return (
-                self._format_minutes_to_time(start_minutes),
-                self._format_minutes_to_time(end_minutes)
-            )
+            # Fallback to default times if API data not available (should not happen)
+            # These times match the API test results we saw
+            default_times = {
+                "1": ("08:00", "08:45"),
+                "2": ("08:48", "09:33"), 
+                "3": ("09:53", "10:38"),
+                "4": ("10:43", "11:28"),
+                "5": ("11:38", "12:23"),
+                "6": ("12:28", "13:13"),
+                "7": ("14:08", "14:53"),
+                "8": ("14:58", "15:43"),
+                "9": ("15:48", "16:33"),
+                "10": ("16:38", "17:23"),
+                "11": ("17:28", "18:13"),
+            }
+            return default_times.get(class_hour_number, ("08:00", "08:45"))
             
         except Exception as e:
             _LOGGER.debug(f"Error calculating configurable class times: {e}")
             # Fallback to default times
             return DEFAULT_CLASS_TIMES.get(class_hour_number, ("08:00", "08:45"))
-
-    def _parse_time_to_minutes(self, time_str: str) -> int:
-        """Convert time string (HH:MM) to minutes since midnight."""
-        try:
-            hours, minutes = map(int, time_str.split(':'))
-            return hours * 60 + minutes
-        except Exception:
-            return 8 * 60  # Default to 8:00 AM
-
-    def _format_minutes_to_time(self, minutes: int) -> str:
-        """Convert minutes since midnight to time string (HH:MM)."""
-        hours = minutes // 60
-        mins = minutes % 60
-        return f"{hours:02d}:{mins:02d}"

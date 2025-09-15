@@ -760,6 +760,37 @@ class SchulmanagerAPI:
             _LOGGER.error("Failed to get letter details for letter %d: %s", letter_id, e)
             raise SchulmanagerAPIError(f"Failed to get letter details: {e}") from e
 
+    async def get_class_hours(self) -> List[Dict[str, Any]]:
+        """Get class hours configuration."""
+        requests = [
+            {
+                "moduleName": "schedules",
+                "endpointName": "get-class-hours",
+                "parameters": {}
+            }
+        ]
+        
+        try:
+            response = await self._make_api_call(requests)
+            results = response.get("results", [])
+            
+            if not results:
+                raise SchulmanagerAPIError("No class hours response")
+            
+            class_hours_data = results[0]
+            
+            if class_hours_data.get("status") != 200:
+                raise SchulmanagerAPIError(f"Class hours API error: {class_hours_data.get('status')}")
+            
+            class_hours = class_hours_data.get("data", [])
+            _LOGGER.debug("Retrieved %d class hours", len(class_hours))
+            
+            return class_hours
+            
+        except Exception as e:
+            _LOGGER.error("Failed to get class hours: %s", e)
+            raise SchulmanagerAPIError(f"Failed to get class hours: {e}") from e
+
     async def refresh_token(self) -> None:
         """Refresh the authentication token."""
         await self.authenticate()

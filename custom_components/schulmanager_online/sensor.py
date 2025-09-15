@@ -308,9 +308,7 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
             ATTR_STUDENT_NAME: f"{self.student_info.get('firstname', '')} {self.student_info.get('lastname', '')}",
         }
 
-        # Add schedule configuration for all sensors
-        if "schedule_config" in student_data:
-            attributes["schedule_config"] = student_data["schedule_config"]
+        # NOTE: schedule_config removed - timing now comes from API class_hours data
 
         # Add student class info
         if "info" in student_data:

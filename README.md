@@ -15,11 +15,11 @@ A comprehensive Home Assistant integration for **[Schulmanager Online](https://l
 - **Changes Detected**: Diff sensor with before/after comparison
 
 ### 📅 Calendar (per child)
-- **Schedule Calendar**: All lessons as calendar entries ⚠️ *Times are estimates*
+- **Schedule Calendar**: All lessons as calendar entries with **accurate times from API**
 - **Homework Calendar**: Homework with due dates (optional)
 - **Substitution Plan**: Automatic marking of substitutions
 
-> **⚠️ Important Note**: The Schulmanager Online API only provides class hour numbers (e.g., "5th hour") but **not actual start/end times**. The calendar uses **estimated default times** based on typical German school schedules (1st hour: 08:00-08:45, 5th hour: 11:40-12:25, etc.). Actual lesson times may vary by school.
+> **✅ Accurate Times**: The integration now uses the **actual class hour times** provided by the Schulmanager Online API, ensuring calendar entries show the correct start and end times for each lesson period.
 
 ### 🎨 Custom UI Card (Future Feature)
 - **Coming Soon**: A powerful custom card with multiple view modes
@@ -113,18 +113,7 @@ title: "Today's Schedule"
 initial_view: listDay
 ```
 
-> **📝 Calendar Time Estimates**: Since the Schulmanager API doesn't provide actual lesson start/end times, the calendar uses these **estimated default times**:
-> - 1st hour: 08:00-08:45
-> - 2nd hour: 08:50-09:35  
-> - 3rd hour: 09:55-10:40
-> - 4th hour: 10:45-11:30
-> - 5th hour: 11:40-12:25
-> - 6th hour: 12:30-13:15
-> - 7th hour: 13:20-14:05
-> - 8th hour: 14:10-14:55
-> - And so on...
->
-> **Your school's actual times may differ!** These are estimates based on typical German school schedules.
+> **✅ Accurate Calendar Times**: The integration now uses **actual class hour times** from the Schulmanager Online API. Each school's specific schedule (including breaks and lesson durations) is automatically retrieved and used for precise calendar entries. No more estimates - your calendar shows the real times!
 
 #### Complete School Dashboard
 
@@ -260,10 +249,10 @@ python test_homework_api.py
 - **Permissions**: Does the account have access to schedules?
 - **School Holidays**: Often no data available during holidays
 
-#### Calendar Times Don't Match School Schedule
-- **Expected Behavior**: Calendar times are estimates only
-- **Root Cause**: Schulmanager API doesn't provide actual lesson times
-- **Solution**: Times are based on typical German school schedules and may not match your specific school
+#### Calendar Times Look Correct
+- **Expected Behavior**: Calendar times should match your school's actual schedule
+- **How it Works**: Integration automatically uses actual class hour times from Schulmanager API
+- **Accurate Times**: No configuration needed - times are retrieved directly from your school's system
 
 #### Integration Won't Load
 - **Restart Home Assistant** after installation

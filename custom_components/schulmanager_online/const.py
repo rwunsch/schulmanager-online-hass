@@ -13,13 +13,8 @@ CONF_PASSWORD: Final = "password"
 CONF_STUDENT_ID: Final = "student_id"
 CONF_LOOKAHEAD_WEEKS: Final = "lookahead_weeks"
 
-# Schedule timing configuration keys
-CONF_LESSON_DURATION: Final = "lesson_duration_minutes"
-CONF_SHORT_BREAK: Final = "short_break_minutes"
-CONF_LONG_BREAK_1: Final = "long_break_1_minutes"
-CONF_LONG_BREAK_2: Final = "long_break_2_minutes"
-CONF_LUNCH_BREAK: Final = "lunch_break_minutes"
-CONF_SCHOOL_START_TIME: Final = "school_start_time"
+# NOTE: Schedule timing is now provided by the API's class_hours data
+# No user configuration needed for lesson duration or break times
 
 # Default values
 DEFAULT_LOOKAHEAD_WEEKS: Final = 2
@@ -28,13 +23,8 @@ DEFAULT_TIMEOUT: Final = 30
 DEFAULT_ATTEMPTS: Final = 3
 DEFAULT_BACKOFF_FACTOR: Final = 2
 
-# Default schedule timing values (German school standard)
-DEFAULT_LESSON_DURATION: Final = 45  # minutes
-DEFAULT_SHORT_BREAK: Final = 5       # minutes
-DEFAULT_LONG_BREAK_1: Final = 20     # minutes (after 2nd hour)
-DEFAULT_LONG_BREAK_2: Final = 10     # minutes (after 4th hour) 
-DEFAULT_LUNCH_BREAK: Final = 45      # minutes (after 6th hour)
-DEFAULT_SCHOOL_START_TIME: Final = "08:00"
+# NOTE: Default timing values removed - API provides authoritative class hours
+# See coordinator.py _calculate_times_for_hour() for API-based time calculation
 
 # Platforms
 PLATFORMS: Final = [Platform.SENSOR, Platform.CALENDAR]

@@ -5,6 +5,14 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from .free_hours_utils import (
+    is_free_hour,
+    filter_actual_lessons,
+    count_lessons_by_type,
+    get_subjects_from_lessons,
+    get_teachers_from_lessons,
+    format_lesson_summary,
+)
 from .const import (
     ATTR_CLASS_NAME,
     ATTR_COMMENT,
@@ -25,9 +33,31 @@ def _format_lesson_for_attributes(lesson: Dict[str, Any]) -> Dict[str, Any]:
     
     This ensures all sensors use the same data format:
     - subject: Full subject name (e.g., "Evangelische Religionslehre (konfessionell kooperativ)")
-    - subject_abbreviation: Short form (e.g., "EN")
+    - subject_abbreviation: Short form (e.g., "EN")  
     - subject_sanitized: Clean subject name without parentheses and commas (e.g., "Evangelische Religionslehre")
+    - For free hours: subject fields are empty, type is "freeHour"
     """
+    lesson_type = lesson.get("type", "regularLesson")
+    
+    # Handle free hours
+    if is_free_hour(lesson):
+        return {
+            "subject": "",
+            "subject_abbreviation": "",
+            "subject_sanitized": "",
+            "time": f"{lesson.get('start_time', '')}-{lesson.get('end_time', '')}",
+            "room": "",
+            "teacher": "",
+            "teacher_lastname": "",
+            "teacher_firstname": "",
+            "is_substitution": False,
+            "type": "freeHour",
+            "comment": "",
+            "date": lesson.get("date", ""),
+            "class_hour": lesson.get("class_hour_number", "")
+        }
+    
+    # Handle regular lessons
     full_subject = lesson.get("subject_name", lesson.get("subject", ""))
     
     return {
@@ -40,7 +70,7 @@ def _format_lesson_for_attributes(lesson: Dict[str, Any]) -> Dict[str, Any]:
         "teacher_lastname": lesson.get("teacher_lastname", ""),
         "teacher_firstname": lesson.get("teacher_firstname", ""),
         "is_substitution": lesson.get("is_substitution", False),
-        "type": lesson.get("type", "regularLesson"),
+        "type": lesson_type,
         "comment": lesson.get("comment", ""),
         "date": lesson.get("date", ""),
         "class_hour": lesson.get("class_hour_number", "")
@@ -189,9 +219,34 @@ def get_today_lessons_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]
     """Get attributes for today's lessons sensor."""
     today_lessons = student_data.get("today_lessons", [])
     
+    # Use utility functions for consistent processing (same as tomorrow sensor)
+    actual_lessons = filter_actual_lessons(today_lessons)
+    subjects = get_subjects_from_lessons(today_lessons, exclude_free=True)
+    teachers = get_teachers_from_lessons(today_lessons, exclude_free=True)
+    counts = count_lessons_by_type(today_lessons)
+    
+    # Count lessons by hour (excluding free hours)
+    lessons_by_hour = {}
+    changes_count = 0
+    
+    for lesson in actual_lessons:
+        hour = lesson.get("class_hour_number", "")
+        if hour:
+            lessons_by_hour[hour] = lessons_by_hour.get(hour, 0) + 1
+        
+        if lesson.get("is_substitution") or lesson.get("type") in ["changedLesson", "cancelledLesson"]:
+            changes_count += 1
+    
     return {
-        "lessons": _format_lessons_list_attributes(today_lessons),
-        "count": len(today_lessons),
+        "total_lessons": counts["actual"],
+        "free_hours": counts["free"],
+        "lessons_by_hour": lessons_by_hour,
+        "lessons": _format_lessons_list_attributes(today_lessons),  # Include all lessons (with free hours)
+        "subjects": sorted(list(subjects)),
+        "teachers": sorted(list(teachers)),
+        "subject_count": len(subjects),
+        "teacher_count": len(teachers),
+        "changes_count": changes_count,
     }
 
 
@@ -201,48 +256,36 @@ def get_tomorrow_lessons_count(student_data: Dict[str, Any]) -> str:
     if not tomorrow_lessons:
         return "No lessons tomorrow"
     
-    total_lessons = len(tomorrow_lessons)
-    subjects = set()
-    
-    for lesson in tomorrow_lessons:
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-    
-    return f"{total_lessons} lessons, {len(subjects)} subjects"
+    return format_lesson_summary(tomorrow_lessons, include_free_hours=False)
 
 
 def get_tomorrow_lessons_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for tomorrow's lessons sensor."""
     tomorrow_lessons = student_data.get("tomorrow_lessons", [])
     
-    # Count lessons by hour
+    # Use utility functions for consistent processing
+    actual_lessons = filter_actual_lessons(tomorrow_lessons)
+    subjects = get_subjects_from_lessons(tomorrow_lessons, exclude_free=True)
+    teachers = get_teachers_from_lessons(tomorrow_lessons, exclude_free=True)
+    counts = count_lessons_by_type(tomorrow_lessons)
+    
+    # Count lessons by hour (excluding free hours)
     lessons_by_hour = {}
-    subjects = set()
-    teachers = set()
     changes_count = 0
     
-    for lesson in tomorrow_lessons:
+    for lesson in actual_lessons:
         hour = lesson.get("class_hour_number", "")
         if hour:
             lessons_by_hour[hour] = lessons_by_hour.get(hour, 0) + 1
         
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-        
-        for teacher in lesson.get("teachers", []):
-            teacher_name = teacher.get("abbreviation", teacher.get("name", ""))
-            if teacher_name:
-                teachers.add(teacher_name)
-        
         if lesson.get("is_substitution") or lesson.get("type") in ["changedLesson", "cancelledLesson"]:
             changes_count += 1
-
+    
     return {
-        "total_lessons": len(tomorrow_lessons),
+        "total_lessons": counts["actual"],
+        "free_hours": counts["free"],
         "lessons_by_hour": lessons_by_hour,
-        "lessons": _format_lessons_list_attributes(tomorrow_lessons),
+        "lessons": _format_lessons_list_attributes(tomorrow_lessons),  # Include all lessons (with free hours)
         "subjects": sorted(list(subjects)),
         "teachers": sorted(list(teachers)),
         "subject_count": len(subjects),
@@ -292,48 +335,36 @@ def get_this_week_summary(student_data: Dict[str, Any]) -> str:
     if not this_week:
         return "No lessons this week"
     
-    total_lessons = len(this_week)
-    subjects = set()
-    
-    for lesson in this_week:
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-    
-    return f"{total_lessons} lessons, {len(subjects)} subjects"
+    return format_lesson_summary(this_week, include_free_hours=False)
 
 
 def get_this_week_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for this week sensor."""
     this_week = student_data.get("this_week", [])
     
-    # Count lessons by day
+    # Use utility functions for consistent processing
+    actual_lessons = filter_actual_lessons(this_week)
+    subjects = get_subjects_from_lessons(this_week, exclude_free=True)
+    teachers = get_teachers_from_lessons(this_week, exclude_free=True)
+    counts = count_lessons_by_type(this_week)
+    
+    # Count lessons by day (excluding free hours)
     lessons_by_day = {}
-    subjects = set()
-    teachers = set()
     changes_count = 0
     
-    for lesson in this_week:
+    for lesson in actual_lessons:
         date = lesson.get("date", "")
         if date:
             lessons_by_day[date] = lessons_by_day.get(date, 0) + 1
         
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-        
-        for teacher in lesson.get("teachers", []):
-            teacher_name = teacher.get("abbreviation", teacher.get("name", ""))
-            if teacher_name:
-                teachers.add(teacher_name)
-        
         if lesson.get("is_substitution") or lesson.get("type") in ["changedLesson", "cancelledLesson"]:
             changes_count += 1
-
+    
     return {
-        "total_lessons": len(this_week),
+        "total_lessons": counts["actual"],
+        "free_hours": counts["free"],
         "lessons_by_day": lessons_by_day,
-        "lessons": _format_lessons_list_attributes(this_week),
+        "lessons": _format_lessons_list_attributes(this_week),  # Include all lessons (with free hours)
         "subjects": sorted(list(subjects)),
         "teachers": sorted(list(teachers)),
         "subject_count": len(subjects),
@@ -348,44 +379,32 @@ def get_next_week_summary(student_data: Dict[str, Any]) -> str:
     if not next_week:
         return "No lessons next week"
     
-    total_lessons = len(next_week)
-    subjects = set()
-    
-    for lesson in next_week:
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-    
-    return f"{total_lessons} lessons, {len(subjects)} subjects"
+    return format_lesson_summary(next_week, include_free_hours=False)
 
 
 def get_next_week_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for next week sensor."""
     next_week = student_data.get("next_week", [])
     
-    # Count lessons by day
-    lessons_by_day = {}
-    subjects = set()
-    teachers = set()
+    # Use utility functions for consistent processing
+    actual_lessons = filter_actual_lessons(next_week)
+    subjects = get_subjects_from_lessons(next_week, exclude_free=True)
+    teachers = get_teachers_from_lessons(next_week, exclude_free=True)
+    counts = count_lessons_by_type(next_week)
     
-    for lesson in next_week:
+    # Count lessons by day (excluding free hours)
+    lessons_by_day = {}
+    
+    for lesson in actual_lessons:
         date = lesson.get("date", "")
         if date:
             lessons_by_day[date] = lessons_by_day.get(date, 0) + 1
-        
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-        
-        for teacher in lesson.get("teachers", []):
-            teacher_name = teacher.get("abbreviation", teacher.get("name", ""))
-            if teacher_name:
-                teachers.add(teacher_name)
-
+    
     return {
-        "total_lessons": len(next_week),
+        "total_lessons": counts["actual"],
+        "free_hours": counts["free"],
         "lessons_by_day": lessons_by_day,
-        "lessons": _format_lessons_list_attributes(next_week),
+        "lessons": _format_lessons_list_attributes(next_week),  # Include all lessons (with free hours)
         "subjects": sorted(list(subjects)),
         "teachers": sorted(list(teachers)),
         "subject_count": len(subjects),
@@ -460,48 +479,36 @@ def get_next_school_day_lessons_count(student_data: Dict[str, Any]) -> str:
     if not next_school_day:
         return "No upcoming school day"
     
-    total_lessons = len(next_school_day)
-    subjects = set()
-    
-    for lesson in next_school_day:
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-    
-    return f"{total_lessons} lessons, {len(subjects)} subjects"
+    return format_lesson_summary(next_school_day, include_free_hours=False)
 
 
 def get_next_school_day_lessons_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for next school day lessons sensor."""
     next_school_day = student_data.get("next_school_day", [])
     
-    # Count lessons by hour
+    # Use utility functions for consistent processing
+    actual_lessons = filter_actual_lessons(next_school_day)
+    subjects = get_subjects_from_lessons(next_school_day, exclude_free=True)
+    teachers = get_teachers_from_lessons(next_school_day, exclude_free=True)
+    counts = count_lessons_by_type(next_school_day)
+    
+    # Count lessons by hour (excluding free hours)
     lessons_by_hour = {}
-    subjects = set()
-    teachers = set()
     changes_count = 0
     
-    for lesson in next_school_day:
+    for lesson in actual_lessons:
         hour = lesson.get("class_hour_number", "")
         if hour:
             lessons_by_hour[hour] = lessons_by_hour.get(hour, 0) + 1
         
-        subject = _get_subject_for_display(lesson)
-        if subject:
-            subjects.add(subject)
-        
-        for teacher in lesson.get("teachers", []):
-            teacher_name = teacher.get("abbreviation", teacher.get("name", ""))
-            if teacher_name:
-                teachers.add(teacher_name)
-        
         if lesson.get("is_substitution") or lesson.get("type") in ["changedLesson", "cancelledLesson"]:
             changes_count += 1
-
+    
     return {
-        "total_lessons": len(next_school_day),
+        "total_lessons": counts["actual"],
+        "free_hours": counts["free"],
         "lessons_by_hour": lessons_by_hour,
-        "lessons": _format_lessons_list_attributes(next_school_day),
+        "lessons": _format_lessons_list_attributes(next_school_day),  # Include all lessons (with free hours)
         "subjects": sorted(list(subjects)),
         "teachers": sorted(list(teachers)),
         "subject_count": len(subjects),
