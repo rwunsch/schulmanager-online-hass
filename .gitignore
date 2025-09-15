@@ -36,3 +36,4 @@ coverage.xml
 .Trashes
 ehthumbs.db
 Thumbs.db
+test-scripts/.credentials
