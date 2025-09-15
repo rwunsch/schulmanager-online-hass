@@ -201,8 +201,9 @@ $RECENT_COMMITS"
 
 print_success "Committed changes"
 
-# Push to origin with tags (HACS requires matching tags)
-print_info "Pushing to GitHub with tags..."
+# Create and push tag (HACS requires matching tags)
+print_info "Creating and pushing tag..."
+git tag "v$NEW_VERSION"
 git push origin main
 git push origin "v$NEW_VERSION"
 
