@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace_dashboards",
+  "data": {
+    "items": [
+      {
+        "id": "map",
+        "icon": "mdi:map",
+        "title": "Map",
+        "url_path": "map",
+        "show_in_sidebar": true,
+        "require_admin": false,
+        "mode": "storage"
+      },
+      {
+        "id": "dashboard_schulmanager",
+        "show_in_sidebar": true,
+        "title": "Schulmanager",
+        "require_admin": false,
+        "mode": "storage",
+        "url_path": "dashboard-schulmanager"
+      }
+    ]
+  }
+}

@@ -1,14 +1,14 @@
-version: '3.8'
-
 services:
   homeassistant:
     container_name: schulmanager-ha-test
     image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
       # Home Assistant configuration
-      - ./test-scripts/ha-config:/config
+      - ./ha-config:/config
       # Mount our custom integration directly
-      - ./custom_components:/config/custom_components
+      - ../custom_components:/config/custom_components
+      # Mount the custom card JS file directly from the integration (creates www directory automatically)
+      - ../custom_components/schulmanager_online/www/schulmanager-schedule-card.js:/config/www/schulmanager-schedule-card.js
     environment:
       - TZ=Europe/Berlin
     ports:
