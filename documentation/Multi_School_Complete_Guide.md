@@ -1,5 +1,17 @@
 # Multi-School Complete Implementation Guide
 
+## 🔴 CRITICAL BUG FIX (v1.0.7)
+
+**Issue**: Multi-school authentication was failing with 401 error when selecting a specific school.
+
+**Root Cause**: The salt endpoint returns **different salts** depending on the `institutionId` parameter. When re-authenticating with a specific school after detecting multiple schools, the code was reusing the salt fetched with `institutionId: null`, causing authentication to fail.
+
+**Fix**: Modified `_get_salt()` to accept and pass through the `institution_id` parameter. Now the salt is correctly refetched with the institution_id before re-authentication.
+
+**Affected Users**: Only accounts with access to multiple schools (children at different schools).
+
+---
+
 ## Executive Summary
 
 **Account Tested**: `wunsch@gmx.de`  
@@ -103,7 +115,11 @@ entry.data = {
 
 **Step 1: Initial Login** (`institutionId: null`)
 ```json
-Response: {
+GET /api/get-salt with {"institutionId": null}
+→ Returns salt
+
+POST /api/login with {"institutionId": null, "hash": "..."}
+→ Response: {
   "multipleAccounts": [
     {"id": 123, "label": "School A"},
     {"id": 456, "label": "School B"}
@@ -114,16 +130,31 @@ Response: {
 - User must select a school
 
 **Step 2: Re-Login** (with selected `institutionId`)
+
+⚠️ **CRITICAL**: The salt MUST be refetched with the institution_id!
+
 ```json
-Request: {"institutionId": 123}
-Response: {"jwt": "...", "user": {...}}
+GET /api/get-salt with {"institutionId": 123}
+→ Returns institution-specific salt (DIFFERENT from step 1!)
+
+POST /api/login with {"institutionId": 123, "hash": "..."}
+→ Response: {"jwt": "...", "user": {...}}
 ```
 - JWT token received
 - `institutionId` stored for future use
 
+**Why is this necessary?**
+The Schulmanager API generates different salts based on the `institutionId` parameter. When authenticating with a specific school, you MUST:
+1. Fetch salt WITH the institution_id
+2. Generate hash from that institution-specific salt
+3. Login with the institution_id and that hash
+
+Using the salt from Step 1 (fetched with `institutionId: null`) will result in a **401 Unauthorized** error.
+
 **Step 3: Subsequent HA Restarts**
 - Read `institutionId` from `entry.data`
 - Pass to `api.authenticate(institution_id=...)`
+- API will fetch institution-specific salt and authenticate
 - Session continues with same school
 
 ---
@@ -146,9 +177,24 @@ class SchulmanagerAPI:
 ```python
 async def authenticate(self, *, institution_id: Optional[int] = None):
     """Authenticate with optional institutionId for multi-school accounts."""
-    salt = await self._get_salt()
+    # CRITICAL: Pass institution_id to salt request for multi-school accounts
+    salt = await self._get_salt(institution_id=institution_id)
     hash = self._generate_salted_hash(self.password, salt)
     await self._login(hash, institution_id=institution_id)
+```
+
+#### Salt Retrieval
+```python
+async def _get_salt(self, *, institution_id: Optional[int] = None) -> str:
+    """Get salt for password hashing. Pass institution_id for multi-school accounts."""
+    payload = {
+        "emailOrUsername": self.email,
+        "mobileApp": False,
+        "institutionId": institution_id,  # CRITICAL: Must include for multi-school
+    }
+    
+    response = await self.session.post(SALT_URL, json=payload)
+    # ... handle response
 ```
 
 #### Login Handler
@@ -274,11 +320,15 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 
 | Endpoint | Method | Purpose | institutionId Location |
 |----------|--------|---------|----------------------|
-| `/api/get-salt` | POST | Get salt for hashing | Payload: `{"institutionId": null}` |
-| `/api/login` | POST | Authenticate | Payload: `{"institutionId": 123}` |
+| `/api/get-salt` | POST | Get salt for hashing | Payload: `{"institutionId": null \| 123}` ⚠️ MUST match login! |
+| `/api/login` | POST | Authenticate | Payload: `{"institutionId": null \| 123}` |
 | `/api/calls` | POST | All data requests | Implicit in JWT token |
 
-**Key Insight**: Once authenticated with an `institutionId`, the JWT token is **scoped to that institution**. All subsequent API calls use that token without needing to pass `institutionId` explicitly.
+**Key Insights**: 
+1. The salt endpoint returns **different salts** depending on the `institutionId` parameter
+2. Once authenticated with an `institutionId`, the JWT token is **scoped to that institution**
+3. All subsequent API calls use that token without needing to pass `institutionId` explicitly
+4. ⚠️ **CRITICAL BUG FIX** (v1.0.7): For multi-school accounts, the salt MUST be fetched with the same `institutionId` used for login, otherwise authentication fails with 401
 
 ---
 

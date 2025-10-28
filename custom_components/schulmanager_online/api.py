@@ -40,8 +40,8 @@ class SchulmanagerAPI:
     async def authenticate(self, *, institution_id: Optional[int] = None) -> None:
         """Authenticate with the API. Pass institution_id to select a school when required."""
         try:
-            # Get salt
-            salt = await self._get_salt()
+            # Get salt (pass institution_id for multi-school accounts)
+            salt = await self._get_salt(institution_id=institution_id)
             
             # Generate salted hash
             salted_hash = self._generate_salted_hash(self.password, salt)
@@ -53,12 +53,12 @@ class SchulmanagerAPI:
             _LOGGER.error("Authentication failed: %s", e)
             raise SchulmanagerAPIError(f"Authentication failed: {e}") from e
 
-    async def _get_salt(self) -> str:
-        """Get salt for password hashing."""
+    async def _get_salt(self, *, institution_id: Optional[int] = None) -> str:
+        """Get salt for password hashing. Pass institution_id for multi-school accounts."""
         payload = {
             "emailOrUsername": self.email,
             "mobileApp": False,
-            "institutionId": None
+            "institutionId": institution_id
         }
         
         _LOGGER.debug("🧂 Requesting salt from: %s", SALT_URL)

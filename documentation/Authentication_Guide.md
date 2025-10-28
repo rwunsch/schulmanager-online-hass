@@ -39,9 +39,11 @@ Content-Type: application/json
 {
   "emailOrUsername": "your-email@example.com",
   "mobileApp": false,
-  "institutionId": null
+  "institutionId": null  // or specific ID for multi-school accounts
 }
 ```
+
+⚠️ **IMPORTANT**: For multi-school accounts, the `institutionId` parameter MUST match the ID used in the subsequent login request. The API returns different salts based on this parameter.
 
 ### Response
 
@@ -52,12 +54,12 @@ Content-Type: application/json
 ### Python Implementation
 
 ```python
-async def _get_salt(self) -> str:
-    """Get salt for password hashing."""
+async def _get_salt(self, *, institution_id: Optional[int] = None) -> str:
+    """Get salt for password hashing. Pass institution_id for multi-school accounts."""
     payload = {
         "emailOrUsername": self.email,
         "mobileApp": False,  # IMPORTANT: false for web clients
-        "institutionId": None
+        "institutionId": institution_id  # CRITICAL: Must match login request!
     }
     
     async with self.session.post(SALT_URL, json=payload) as response:
@@ -78,6 +80,24 @@ async def _get_salt(self) -> str:
             raise SchulmanagerAPIError("No salt received")
         
         return salt
+```
+
+### Multi-School Accounts
+
+For accounts with multiple schools:
+1. **First call**: Use `institutionId: null` to discover available schools
+2. **Second call**: Use specific `institutionId` to get institution-specific salt
+3. **Result**: Different salts for different scenarios
+
+Example:
+```python
+# Discovery phase
+salt1 = await api._get_salt(institution_id=None)  # Returns salt for discovery
+# ... login returns multipleAccounts ...
+
+# Authentication phase
+salt2 = await api._get_salt(institution_id=123)   # Returns institution-specific salt
+# ... login succeeds with JWT token ...
 ```
 
 ## 🔑 Step 2: Hash Generation

@@ -122,14 +122,15 @@ def pbkdf2_sha512_hex(password: str, salt: str) -> str:
     return dk.hex()
 
 
-def get_salt(email: str) -> str:
-    payload = {"emailOrUsername": email, "mobileApp": False, "institutionId": None}
+def get_salt(email: str, institution_id: Optional[int] = None) -> str:
+    payload = {"emailOrUsername": email, "mobileApp": False, "institutionId": institution_id}
     r = requests.post(SALT_URL, json=payload, timeout=30)
     try:
         data = r.json()
     except Exception:
         data = r.text
-    _dump_json("01_get_salt_response.json", {"status": r.status_code, "body": data if isinstance(data, dict) else str(data)[:500]})
+    filename = f"01_get_salt_response{'_inst_' + str(institution_id) if institution_id else ''}.json"
+    _dump_json(filename, {"status": r.status_code, "body": data if isinstance(data, dict) else str(data)[:500]})
     if r.status_code != 200:
         raise RuntimeError(f"get-salt failed: {r.status_code}")
     if isinstance(data, str):
@@ -354,7 +355,17 @@ def main() -> int:
                 return 2
             
             print()
-            print(f"Step 3b/5: Re-authenticating with Institution ID {selected_inst_id}...")
+            print(f"Step 3b/5: Re-fetching salt with Institution ID {selected_inst_id}...")
+            salt = get_salt(args.email, institution_id=selected_inst_id)
+            print(f"         ✓ Institution-specific salt received ({len(salt)} characters)")
+            
+            print()
+            print(f"Step 3c/5: Re-computing hash with institution-specific salt...")
+            hash_hex = pbkdf2_sha512_hex(args.password, salt)
+            print(f"         ✓ Institution-specific hash computed ({len(hash_hex)} characters)")
+            
+            print()
+            print(f"Step 3d/5: Re-authenticating with Institution ID {selected_inst_id}...")
             data = login(args.email, args.password, hash_hex, institution_id=selected_inst_id)
 
         token = data.get("jwt") or data.get("token")
@@ -365,7 +376,7 @@ def main() -> int:
         print(f"         ✓ Login successful (token: ...{token[-8:]})")
         print()
 
-        print("Step 4/5: Analyzing user and student data...")
+        print("Step 4/6: Analyzing user and student data...")
         user = data.get("user", {})
         students: List[Dict[str, Any]] = []
         
@@ -402,14 +413,14 @@ def main() -> int:
         print()
 
         if students and args.full_test:
-            print("Step 5/5: Testing API endpoints...")
+            print("Step 5/6: Testing API endpoints...")
             probe_list = ["schedule", "homework", "exams", "letters", "classhours"]
             probe_endpoints(token, students[0], args.weeks, probe_list)
             print("         ✓ API tests complete")
         elif students:
-            print("Step 5/5: Skipping API endpoint tests (use --full-test to enable)")
+            print("Step 5/6: Skipping API endpoint tests (use --full-test to enable)")
         else:
-            print("Step 5/5: Skipping API tests (no students found)")
+            print("Step 5/6: Skipping API tests (no students found)")
         
         print()
         print_summary(has_multi_school, selected_inst_id or user_inst_id, students, user)
