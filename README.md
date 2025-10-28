@@ -43,7 +43,7 @@ A comprehensive Home Assistant integration for **[Schulmanager Online](https://l
 
 ### HACS (Recommended)
 1. **HACS** → **Integrations** → **⋮** → **Custom Repositories**
-2. Add repository: `https://github.com/wunsch/schulmanager-online-hass`
+2. Add repository: `https://github.com/rwunsch/schulmanager-online-hass`
 3. Category: **Integration**
 4. Install **Schulmanager Online**
 5. **Restart** Home Assistant
@@ -429,8 +429,8 @@ This project is licensed under the MIT License. See `LICENSE` for details.
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/wunsch/schulmanager-online-hass/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/wunsch/schulmanager-online-hass/discussions)
+- **Issues**: [GitHub Issues](https://github.com/rwunsch/schulmanager-online-hass/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rwunsch/schulmanager-online-hass/discussions)
 - **Home Assistant Community**: [Community Forum](https://community.home-assistant.io/)
 
 ## 🌍 Translations

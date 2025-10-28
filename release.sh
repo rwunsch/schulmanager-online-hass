@@ -234,7 +234,7 @@ This release follows HACS standards:
 - ✅ Proper repository structure maintained
 
 ---
-**Full Changelog**: https://github.com/wunsch/schulmanager-online-hass/compare/v$CURRENT_VERSION...v$NEW_VERSION"
+**Full Changelog**: https://github.com/rwunsch/schulmanager-online-hass/compare/v$CURRENT_VERSION...v$NEW_VERSION"
 
 # Create the release
 gh release create "v$NEW_VERSION" \
@@ -250,7 +250,7 @@ print_success "🎉 Release completed successfully!"
 print_info "Release details:"
 echo "  • Version: $CURRENT_VERSION → $NEW_VERSION"
 echo "  • Tag: v$NEW_VERSION (matches manifest.json version)"
-echo "  • Release URL: https://github.com/wunsch/schulmanager-online-hass/releases/tag/v$NEW_VERSION"
+echo "  • Release URL: https://github.com/rwunsch/schulmanager-online-hass/releases/tag/v$NEW_VERSION"
 echo "  • HACS Status: Will detect update from manifest.json version + GitHub release"
 
 # Optional: Open release in browser

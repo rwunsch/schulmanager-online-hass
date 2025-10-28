@@ -270,7 +270,7 @@ services:
 For production, the integration should be installed via HACS:
 
 1. Install HACS in Home Assistant
-2. Add custom repository: `https://github.com/wunsch/schulmanager-online-hass`
+2. Add custom repository: `https://github.com/rwunsch/schulmanager-online-hass`
 3. Install integration through HACS
 
 ### 2. Manual Installation
@@ -278,7 +278,7 @@ For production, the integration should be installed via HACS:
 ```bash
 # In Home Assistant config directory
 cd /config/custom_components/
-git clone https://github.com/wunsch/schulmanager-online-hass.git schulmanager_online
+git clone https://github.com/rwunsch/schulmanager-online-hass.git schulmanager_online
 ```
 
 ### 3. Backup

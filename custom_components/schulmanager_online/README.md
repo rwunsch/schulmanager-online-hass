@@ -1,8 +1,8 @@
 # Schulmanager Online Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/wunsch/schulmanager-online-hass.svg)](https://github.com/wunsch/schulmanager-online-hass/releases)
-[![License](https://img.shields.io/github/license/wunsch/schulmanager-online-hass.svg)](LICENSE)
+[![GitHub release](https://img.shields.io/github/release/rwunsch/schulmanager-online-hass.svg)](https://github.com/rwunsch/schulmanager-online-hass/releases)
+[![License](https://img.shields.io/github/license/rwunsch/schulmanager-online-hass.svg)](LICENSE)
 
 A comprehensive Home Assistant integration for **[Schulmanager Online](https://login.schulmanager-online.de/)**, providing real-time access to student schedules, homework assignments, and school information.
 
@@ -41,14 +41,14 @@ Supports 12 languages: English, German, French, Spanish, Italian, Dutch, Portugu
 1. Open **HACS** in Home Assistant
 2. Go to **Integrations**
 3. Click **Custom Repositories**
-4. Add repository: `https://github.com/wunsch/schulmanager-online-hass`
+4. Add repository: `https://github.com/rwunsch/schulmanager-online-hass`
 5. Category: **Integration**
 6. Click **Download**
 7. **Restart Home Assistant**
 
 ### Manual Installation
 
-1. Download the latest release from [GitHub](https://github.com/wunsch/schulmanager-online-hass/releases)
+1. Download the latest release from [GitHub](https://github.com/rwunsch/schulmanager-online-hass/releases)
 2. Extract to `custom_components/schulmanager_online/`
 3. Restart Home Assistant
 
@@ -455,7 +455,7 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 ```bash
 # Clone repository
-git clone https://github.com/wunsch/schulmanager-online-hass.git
+git clone https://github.com/rwunsch/schulmanager-online-hass.git
 
 # Install development dependencies
 cd test-scripts
@@ -479,8 +479,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/wunsch/schulmanager-online-hass/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/wunsch/schulmanager-online-hass/discussions)
+- **Issues**: [GitHub Issues](https://github.com/rwunsch/schulmanager-online-hass/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rwunsch/schulmanager-online-hass/discussions)
 - **Documentation**: [Full Documentation](../../documentation/README.md)
 
 ---
