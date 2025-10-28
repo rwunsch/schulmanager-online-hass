@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Semanas à frente (1-4)",
           "include_homework": "Incluir calendário de lições de casa",
-          "include_grades": "Incluir notas (experimental)"
+          "include_exams": "Incluir exames/testes",
+          "include_letters": "Incluir cartas/mensagens",
+          "include_grades": "Incluir notas (experimental)",
+          "schedule_highlight": "Destacar mudanças no horário (usar emojis)",
+          "schedule_hide_cancelled_no_highlight": "Ocultar cancelamentos quando destaque desativado"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Semanas à frente (1-4)",
           "include_homework": "Incluir calendário de lições de casa",
-          "include_grades": "Incluir notas (experimental)"
+          "include_exams": "Incluir exames/testes",
+          "include_letters": "Incluir cartas/mensagens",
+          "include_grades": "Incluir notas (experimental)",
+          "schedule_highlight": "Destacar mudanças no horário (usar emojis)",
+          "schedule_hide_cancelled_no_highlight": "Ocultar cancelamentos quando destaque desativado"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Limpar cache de autenticação",
+      "description": "Limpa tokens armazenados e força nova autenticação na próxima atualização."
+    },
+    "refresh": {
+      "name": "Atualizar dados agora",
+      "description": "Solicita uma atualização imediata (intervalo de 5 minutos entre atualizações manuais)."
+    },
+    "clear_debug": {
+      "name": "Limpar arquivos de depuração",
+      "description": "Exclui arquivos de depuração salvos pela integração no host."
     }
   }
 }

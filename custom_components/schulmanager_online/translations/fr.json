@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Semaines à l'avance (1-4)",
           "include_homework": "Inclure le calendrier des devoirs",
-          "include_grades": "Inclure les notes (expérimental)"
+          "include_exams": "Inclure les examens/tests",
+          "include_letters": "Inclure les lettres/messages",
+          "include_grades": "Inclure les notes (expérimental)",
+          "schedule_highlight": "Mettre en évidence les changements d'horaire (utiliser des emojis)",
+          "schedule_hide_cancelled_no_highlight": "Masquer les annulations lorsque la mise en évidence est désactivée"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Semaines à l'avance (1-4)",
           "include_homework": "Inclure le calendrier des devoirs",
-          "include_grades": "Inclure les notes (expérimental)"
+          "include_exams": "Inclure les examens/tests",
+          "include_letters": "Inclure les lettres/messages",
+          "include_grades": "Inclure les notes (expérimental)",
+          "schedule_highlight": "Mettre en évidence les changements d'horaire (utiliser des emojis)",
+          "schedule_hide_cancelled_no_highlight": "Masquer les annulations lorsque la mise en évidence est désactivée"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Effacer le cache d'authentification",
+      "description": "Efface les jetons en cache et force une nouvelle authentification lors de la prochaine mise à jour."
+    },
+    "refresh": {
+      "name": "Actualiser les données maintenant",
+      "description": "Demande une mise à jour immédiate (refroidissement de 5 minutes entre les actualisations manuelles)."
+    },
+    "clear_debug": {
+      "name": "Supprimer les fichiers de débogage",
+      "description": "Supprime les fichiers de débogage enregistrés par l'intégration sur l'hôte."
     }
   }
 }

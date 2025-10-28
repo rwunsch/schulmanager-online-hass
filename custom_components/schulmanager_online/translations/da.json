@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Uger frem (1-4)",
           "include_homework": "Inkluder lektiekalender",
-          "include_grades": "Inkluder karakterer (eksperimentel)"
+          "include_exams": "Inkluder eksamener/tests",
+          "include_letters": "Inkluder breve/beskeder",
+          "include_grades": "Inkluder karakterer (eksperimentel)",
+          "schedule_highlight": "Fremhæv planændringer (brug emojis)",
+          "schedule_hide_cancelled_no_highlight": "Skjul aflysninger når fremhævning er slået fra"
         }
       }
     },
@@ -27,6 +31,38 @@
     },
     "abort": {
       "already_configured": "Kontoen er allerede konfigureret"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Schulmanager Online Indstillinger",
+        "description": "Opdater integrationsindstillinger",
+        "data": {
+          "lookahead_weeks": "Uger frem (1-4)",
+          "include_homework": "Inkluder lektiekalender",
+          "include_exams": "Inkluder eksamener/tests",
+          "include_letters": "Inkluder breve/beskeder",
+          "include_grades": "Inkluder karakterer (eksperimentel)",
+          "schedule_highlight": "Fremhæv planændringer (brug emojis)",
+          "schedule_hide_cancelled_no_highlight": "Skjul aflysninger når fremhævning er slået fra"
+        }
+      }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Ryd godkendelsescache",
+      "description": "Rydder gemte tokens og tvinger genautentificering ved næste opdatering."
+    },
+    "refresh": {
+      "name": "Opdater data nu",
+      "description": "Anmoder om øjeblikkelig opdatering (5-minutters afkølingsperiode mellem manuelle opdateringer)."
+    },
+    "clear_debug": {
+      "name": "Slet fejlfindingsfiler",
+      "description": "Sletter fejlfindingsdumps gemt af integrationen på værten."
     }
   }
 }

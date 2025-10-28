@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Semanas por adelantado (1-4)",
           "include_homework": "Incluir calendario de tareas",
-          "include_grades": "Incluir calificaciones (experimental)"
+          "include_exams": "Incluir exámenes/pruebas",
+          "include_letters": "Incluir cartas/mensajes",
+          "include_grades": "Incluir calificaciones (experimental)",
+          "schedule_highlight": "Destacar cambios en el horario (usar emojis)",
+          "schedule_hide_cancelled_no_highlight": "Ocultar cancelaciones cuando el resaltado está desactivado"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Semanas por adelantado (1-4)",
           "include_homework": "Incluir calendario de tareas",
-          "include_grades": "Incluir calificaciones (experimental)"
+          "include_exams": "Incluir exámenes/pruebas",
+          "include_letters": "Incluir cartas/mensajes",
+          "include_grades": "Incluir calificaciones (experimental)",
+          "schedule_highlight": "Destacar cambios en el horario (usar emojis)",
+          "schedule_hide_cancelled_no_highlight": "Ocultar cancelaciones cuando el resaltado está desactivado"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Borrar caché de autenticación",
+      "description": "Borra los tokens guardados y fuerza la reautenticación en la próxima actualización."
+    },
+    "refresh": {
+      "name": "Actualizar datos ahora",
+      "description": "Solicita una actualización inmediata (enfriamiento de 5 minutos entre actualizaciones manuales)."
+    },
+    "clear_debug": {
+      "name": "Borrar archivos de depuración",
+      "description": "Elimina volcados de depuración guardados por la integración en el host."
     }
   }
 }

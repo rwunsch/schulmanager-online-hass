@@ -530,3 +530,45 @@ _LOGGER.debug("Authentication successful, token expires at %s", self.token_expir
 - [API Implementation](API_Implementation.md) - Complete API client
 - [Troubleshooting Guide](Troubleshooting_Guide.md) - Problem solutions
 - [Integration Architecture](Integration_Architecture.md) - Home Assistant integration
+
+---
+
+## 🏫 Multi-school accounts (institution selection)
+
+Some accounts are linked to multiple schools. In that case, the first login response can include `multipleAccounts` instead of a `jwt`. The flow is:
+
+- Step 1: Login with `institutionId: null` to detect available schools
+- Step 2: Login again with the chosen `institutionId` to receive `jwt`
+
+curl examples:
+
+```
+# Step 1: probe (no institution)
+curl -sS -X POST 'https://login.schulmanager-online.de/api/login' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{"emailOrUsername":"<EMAIL>","password":"<PW>","hash":"<PBKDF2_HEX>","mobileApp":false,"institutionId":null}'
+
+# Step 2: login with institution
+curl -sS -X POST 'https://login.schulmanager-online.de/api/login' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{"emailOrUsername":"<EMAIL>","password":"<PW>","hash":"<PBKDF2_HEX>","mobileApp":false,"institutionId":<ID>}'
+```
+
+Our integration detects `multipleAccounts` in the config flow, prompts you to select the school, and re-authenticates with the selected `institutionId`.
+
+## 🧪 External debug script
+
+Use `test-scripts/debug_multi_school.py` to diagnose auth and endpoints outside Home Assistant.
+
+Usage:
+
+```
+cd test-scripts
+python debug_multi_school.py --email you@example.com --password 'secret' --weeks 2 \
+  --probe schedule homework exams letters classhours
+
+# If multiple schools are reported, rerun with the selected id:
+python debug_multi_school.py --email you@example.com --password 'secret' --institution-id 1234
+```
+
+Dumps are written to `test-scripts/debug-dumps/` and can be shared for analysis (they are plain JSON with response status and truncated bodies where appropriate).

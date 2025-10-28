@@ -206,6 +206,28 @@ async def async_setup_entry(
                         student_info=student,
                     )
                 )
+
+        # Grade sensors (if enabled)
+        if config_entry.options.get("include_grades", False):
+            subjects_map = _collect_grade_subjects(coordinator.get_student_data(student_id))
+            for subject_key, subject_names in subjects_map.items():
+                entities.append(
+                    GradeSubjectAverageSensor(
+                        coordinator=coordinator,
+                        student_id=student_id,
+                        student_info=student,
+                        subject_key=subject_key,
+                        subject_abbrev=subject_names.get("abbrev") or subject_key,
+                        subject_name=subject_names.get("name") or subject_key,
+                    )
+                )
+            entities.append(
+                GradesOverallAverageSensor(
+                    coordinator=coordinator,
+                    student_id=student_id,
+                    student_info=student,
+                )
+            )
     
     async_add_entities(entities)
 
@@ -356,3 +378,224 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
             attributes.update(exam_sensors.get_exams_upcoming_attributes(student_data))
 
         return attributes
+
+
+def _collect_grade_subjects(student_data: Dict[str, Any] | None) -> Dict[str, Dict[str, str]]:
+    """Collect subjects from grades payload into a dict: key -> {name, abbrev}."""
+    subjects: Dict[str, Dict[str, str]] = {}
+    if not student_data:
+        return subjects
+    grades_payload = student_data.get("grades", {}) or {}
+    grade_items: List[Dict[str, Any]] = []
+    if isinstance(grades_payload, dict):
+        grade_items = grades_payload.get("grades", []) or []
+    elif isinstance(grades_payload, list):
+        grade_items = grades_payload
+    for g in grade_items:
+        subj = g.get("subject") or {}
+        if isinstance(subj, dict):
+            name = subj.get("name") or subj.get("longName") or "Subject"
+            abbr = subj.get("abbreviation") or subj.get("shortName") or name
+        else:
+            name = str(subj)
+            abbr = name
+        key = (abbr or name).strip() or "subject"
+        if key not in subjects:
+            subjects[key] = {"name": name, "abbrev": abbr}
+    return subjects
+
+
+def _parse_german_grade(value: Any) -> float | None:
+    """Parse German grade formats like '2+', '2-', '0~3' or numeric to float.
+    Returns None if parsing fails.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            return float(value)
+        except Exception:
+            return None
+    s = str(value).strip()
+    if not s:
+        return None
+    if "~" in s:
+        try:
+            return float(s.split("~")[1])
+        except Exception:
+            return None
+    if s.endswith("+") or s.endswith("-"):
+        try:
+            return float(s[:-1])
+        except Exception:
+            return None
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+
+class GradeSubjectAverageSensor(CoordinatorEntity[SchulmanagerDataUpdateCoordinator], SensorEntity):
+    """Average grade for a specific subject."""
+
+    _attr_has_entity_name = True
+    _attr_icon = ICON_SCHOOL
+    _attr_suggested_display_precision = 2
+
+    def __init__(
+        self,
+        coordinator: SchulmanagerDataUpdateCoordinator,
+        student_id: int,
+        student_info: Dict[str, Any],
+        subject_key: str,
+        subject_abbrev: str,
+        subject_name: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self.student_id = student_id
+        self.student_info = student_info
+        self.subject_key = subject_key
+        self.subject_abbrev = subject_abbrev
+        self.subject_name_full = subject_name
+        safe_key = subject_key.lower().replace(" ", "_")
+        self._attr_unique_id = f"schulmanager_grades_avg_{student_id}_{safe_key}"
+        self._attr_name = f"Grades Average {subject_abbrev}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        student_name = f"{self.student_info.get('firstname', '')} {self.student_info.get('lastname', '')}"
+        return DeviceInfo(
+            identifiers={(DOMAIN, str(self.student_id))},
+            name=f"Schulmanager - {student_name}",
+            manufacturer="Schulmanager Online",
+            model="Student Schedule",
+        )
+
+    @property
+    def native_value(self) -> Optional[float]:
+        student_data = self.coordinator.get_student_data(self.student_id)
+        if not student_data:
+            return None
+        grades_payload = student_data.get("grades", {}) or {}
+        if isinstance(grades_payload, dict):
+            items = grades_payload.get("grades", []) or []
+        else:
+            items = grades_payload or []
+        values: List[float] = []
+        for g in items:
+            subj = g.get("subject") or {}
+            if isinstance(subj, dict):
+                abbr = subj.get("abbreviation") or subj.get("shortName") or subj.get("name")
+            else:
+                abbr = str(subj)
+            if (abbr or "").strip() != self.subject_key:
+                continue
+            v = _parse_german_grade(g.get("value"))
+            if v is not None and 1.0 <= v <= 6.0:
+                values.append(v)
+        if not values:
+            return None
+        return round(sum(values) / len(values), 2)
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any] | None:
+        student_data = self.coordinator.get_student_data(self.student_id)
+        if not student_data:
+            return None
+        grades_payload = student_data.get("grades", {}) or {}
+        if isinstance(grades_payload, dict):
+            items = grades_payload.get("grades", []) or []
+        else:
+            items = grades_payload or []
+        count = 0
+        for g in items:
+            subj = g.get("subject") or {}
+            if isinstance(subj, dict):
+                abbr = subj.get("abbreviation") or subj.get("shortName") or subj.get("name")
+            else:
+                abbr = str(subj)
+            if (abbr or "").strip() != self.subject_key:
+                continue
+            if _parse_german_grade(g.get("value")) is not None:
+                count += 1
+        return {
+            "subject": self.subject_name_full,
+            "subject_abbrev": self.subject_abbrev,
+            "grades_count": count,
+        }
+
+
+class GradesOverallAverageSensor(CoordinatorEntity[SchulmanagerDataUpdateCoordinator], SensorEntity):
+    """Overall average grade for a student across subjects."""
+
+    _attr_has_entity_name = True
+    _attr_icon = ICON_SCHOOL
+    _attr_suggested_display_precision = 2
+    _attr_name = "Grades Overall Average"
+
+    def __init__(
+        self,
+        coordinator: SchulmanagerDataUpdateCoordinator,
+        student_id: int,
+        student_info: Dict[str, Any],
+    ) -> None:
+        super().__init__(coordinator)
+        self.student_id = student_id
+        self.student_info = student_info
+        self._attr_unique_id = f"schulmanager_grades_overall_{student_id}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        student_name = f"{self.student_info.get('firstname', '')} {self.student_info.get('lastname', '')}"
+        return DeviceInfo(
+            identifiers={(DOMAIN, str(self.student_id))},
+            name=f"Schulmanager - {student_name}",
+            manufacturer="Schulmanager Online",
+            model="Student Schedule",
+        )
+
+    @property
+    def native_value(self) -> Optional[float]:
+        student_data = self.coordinator.get_student_data(self.student_id)
+        if not student_data:
+            return None
+        grades_payload = student_data.get("grades", {}) or {}
+        if isinstance(grades_payload, dict):
+            items = grades_payload.get("grades", []) or []
+        else:
+            items = grades_payload or []
+        values: List[float] = []
+        for g in items:
+            v = _parse_german_grade(g.get("value"))
+            if v is not None and 1.0 <= v <= 6.0:
+                values.append(v)
+        if not values:
+            return None
+        return round(sum(values) / len(values), 2)
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any] | None:
+        student_data = self.coordinator.get_student_data(self.student_id)
+        if not student_data:
+            return None
+        grades_payload = student_data.get("grades", {}) or {}
+        if isinstance(grades_payload, dict):
+            items = grades_payload.get("grades", []) or []
+        else:
+            items = grades_payload or []
+        subject_values: Dict[str, List[float]] = {}
+        for g in items:
+            subj = g.get("subject") or {}
+            if isinstance(subj, dict):
+                abbr = subj.get("abbreviation") or subj.get("shortName") or subj.get("name")
+            else:
+                abbr = str(subj)
+            v = _parse_german_grade(g.get("value"))
+            if v is None or not (1.0 <= v <= 6.0):
+                continue
+            subject_values.setdefault(abbr, []).append(v)
+        subject_averages = {k: round(sum(vs) / len(vs), 2) for k, vs in subject_values.items() if vs}
+        return {
+            "subjects": subject_averages,
+            "total_numeric_grades": sum(len(vs) for vs in subject_values.values()),
+        }

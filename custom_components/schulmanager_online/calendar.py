@@ -12,7 +12,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    OPT_SCHEDULE_HIGHLIGHT,
+    OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT,
+)
 from .coordinator import SchulmanagerDataUpdateCoordinator
 from .free_hours_utils import is_free_hour, parse_time_to_minutes, format_minutes_to_time
 
@@ -305,25 +309,46 @@ class SchulmanagerOnlineCalendar(CoordinatorEntity, CalendarEntity):
         
         _LOGGER.debug(f"Processing {len(schedule)} schedule items for date range {start_date} to {end_date}")
         
+        # Read highlighting options from config entry options
+        opts = self.coordinator.config_entry.options if hasattr(self.coordinator, "config_entry") else {}
+        highlight = bool(opts.get(OPT_SCHEDULE_HIGHLIGHT, True))
+        hide_cancelled_no_highlight = bool(opts.get(OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT, False))
+
+        # Group by date+hour to de-duplicate replacement vs cancelled
+        grouped: Dict[str, List[Dict[str, Any]]] = {}
         for i, lesson in enumerate(schedule):
             try:
                 _LOGGER.debug(f"Processing lesson {i+1}: date={lesson.get('date')}, class_hour={lesson.get('classHour', {}).get('number')}")
-                event = self._create_lesson_event(lesson)
-                if event:
-                    _LOGGER.debug(f"Created event: {event.summary} from {event.start} to {event.end}")
-                    if self._event_in_range(event, start_date, end_date):
-                        events.append(event)
-                        _LOGGER.debug(f"Event added to calendar (in range)")
-                    else:
-                        _LOGGER.debug(f"Event not in range: event={event.start} to {event.end}, range={start_date} to {end_date}")
-                else:
-                    _LOGGER.debug(f"Failed to create event for lesson {i+1}")
+                date_key = str(lesson.get("date") or "")[:10]
+                hour = (lesson.get("classHour") or {}).get("number")
+                hour_key = str(hour) if hour is not None else f"idx_{i}"
+                key = f"{date_key}|{hour_key}"
+                grouped.setdefault(key, []).append(lesson)
             except Exception as e:
                 _LOGGER.warning(f"Failed to create lesson event: {e}")
                 import traceback
                 _LOGGER.debug(traceback.format_exc())
                 continue
         
+        # Build events per group with de-dup logic
+        for key, lessons in grouped.items():
+            cancelled = [l for l in lessons if l.get("type") == "cancelledLesson"]
+            active = [l for l in lessons if l.get("type") != "cancelledLesson"]
+
+            if active:
+                chosen = active[0]
+                event = self._create_lesson_event(chosen, highlight=highlight)
+                if event and self._event_in_range(event, start_date, end_date):
+                    events.append(event)
+            else:
+                # only cancellations present
+                if not highlight and hide_cancelled_no_highlight:
+                    continue
+                canc = cancelled[0]
+                event = self._create_lesson_event(canc, highlight=highlight)
+                if event and self._event_in_range(event, start_date, end_date):
+                    events.append(event)
+
         _LOGGER.debug(f"Created {len(events)} schedule events")
         return events
 
@@ -404,7 +429,7 @@ class SchulmanagerOnlineCalendar(CoordinatorEntity, CalendarEntity):
             _LOGGER.warning(f"Error checking event range: {e}")
             return False
 
-    def _create_lesson_event(self, lesson: Dict[str, Any]) -> Optional[CalendarEvent]:
+    def _create_lesson_event(self, lesson: Dict[str, Any], *, highlight: bool = True) -> Optional[CalendarEvent]:
         """Create a calendar event from a lesson (processed data structure)."""
         try:
             # Skip free hours - they don't need calendar entries
@@ -452,9 +477,9 @@ class SchulmanagerOnlineCalendar(CoordinatorEntity, CalendarEntity):
             
             # Create title
             if lesson_type == "cancelledLesson":
-                title = f"❌ {subject} (Cancelled)"
+                title = f"❌ {subject} (Cancelled)" if highlight else f"X {subject} (Cancelled)"
             elif lesson_type == "substitution" or is_substitution:
-                title = f"🔄 {subject}"
+                title = f"🔄 {subject}" if highlight else subject
             else:
                 title = subject
             

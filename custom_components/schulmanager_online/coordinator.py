@@ -29,6 +29,9 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         self.options = options
         self.students: List[Dict[str, Any]] = []
         self.previous_data: Dict[str, Any] = {}  # For change detection
+        self._initial_refresh_done = False
+        self._seen_homework: set = set()
+        self._seen_grades: set = set()
         
         super().__init__(
             hass,
@@ -149,6 +152,17 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                 except SchulmanagerAPIError as e:
                     _LOGGER.warning("Failed to get letters: %s", e)
                     data["letters"] = {"data": []}
+
+            # Detect new homework/grades after the first successful refresh only
+            try:
+                if self._initial_refresh_done:
+                    self._detect_and_fire_events(data)
+                else:
+                    # Seed seen sets but do not fire on initial load
+                    self._seed_seen_sets(data)
+                    self._initial_refresh_done = True
+            except Exception as err:
+                _LOGGER.debug("Event detection error: %s", err)
 
             return data
 
@@ -586,3 +600,116 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         except (ValueError, KeyError) as e:
             _LOGGER.debug("Failed to parse lesson end datetime: %s", e)
             return None
+
+    def _seed_seen_sets(self, data: Dict[str, Any]) -> None:
+        """Seed seen sets with initial data to avoid firing events on first load."""
+        for student_id, student_data in data.get("students", {}).items():
+            # Seed homework
+            homework_data = student_data.get("homework", {}) or {}
+            homeworks = homework_data.get("homeworks", []) or []
+            for item in homeworks:
+                key = self._homework_key(student_id, item)
+                if key:
+                    self._seen_homework.add(key)
+            
+            # Seed grades
+            grades_data = student_data.get("grades", {}) or {}
+            grade_items = []
+            if isinstance(grades_data, dict):
+                grade_items = grades_data.get("grades", []) or []
+            elif isinstance(grades_data, list):
+                grade_items = grades_data
+            for g in grade_items:
+                key = self._grade_key(student_id, g)
+                if key:
+                    self._seen_grades.add(key)
+
+    def _detect_and_fire_events(self, data: Dict[str, Any]) -> None:
+        """Detect new homework and grades and fire Home Assistant events."""
+        # Build student name lookup
+        student_names = {}
+        for student_id, student_data in data.get("students", {}).items():
+            info = student_data.get("info", {})
+            name = f"{info.get('firstname', '')} {info.get('lastname', '')}".strip()
+            student_names[student_id] = name
+        
+        # Homework events
+        for student_id, student_data in data.get("students", {}).items():
+            homework_data = student_data.get("homework", {}) or {}
+            homeworks = homework_data.get("homeworks", []) or []
+            for item in homeworks:
+                key = self._homework_key(student_id, item)
+                if not key or key in self._seen_homework:
+                    continue
+                self._seen_homework.add(key)
+                self.hass.bus.async_fire(
+                    "schulmanager_homework_new",
+                    {
+                        "student_id": student_id,
+                        "student_name": student_names.get(student_id, ""),
+                        "subject": item.get("subject", ""),
+                        "homework": item.get("homework") or item.get("description", ""),
+                        "date": item.get("date", ""),
+                    },
+                )
+                _LOGGER.debug(
+                    "Fired schulmanager_homework_new event for student %s: %s",
+                    student_id,
+                    item.get("subject", ""),
+                )
+        
+        # Grade events
+        for student_id, student_data in data.get("students", {}).items():
+            grades_data = student_data.get("grades", {}) or {}
+            grade_items = []
+            if isinstance(grades_data, dict):
+                grade_items = grades_data.get("grades", []) or []
+            elif isinstance(grades_data, list):
+                grade_items = grades_data
+            for g in grade_items:
+                key = self._grade_key(student_id, g)
+                if not key or key in self._seen_grades:
+                    continue
+                self._seen_grades.add(key)
+                subj = g.get("subject") or {}
+                if isinstance(subj, dict):
+                    subject_name = subj.get("name") or subj.get("longName") or "Subject"
+                else:
+                    subject_name = str(subj)
+                self.hass.bus.async_fire(
+                    "schulmanager_grade_new",
+                    {
+                        "student_id": student_id,
+                        "student_name": student_names.get(student_id, ""),
+                        "subject": subject_name,
+                        "grade": g.get("value", ""),
+                    },
+                )
+                _LOGGER.debug(
+                    "Fired schulmanager_grade_new event for student %s: %s - %s",
+                    student_id,
+                    subject_name,
+                    g.get("value", ""),
+                )
+
+    def _homework_key(self, student_id: int, item: Dict[str, Any]) -> Optional[str]:
+        """Generate unique key for homework item."""
+        date = str(item.get("date") or "").strip()
+        subject = str(item.get("subject") or "").strip()
+        homework = str(item.get("homework") or item.get("description") or "").strip()
+        if not date or not (subject or homework):
+            return None
+        return f"{student_id}_{date}_{subject}_{homework}"
+
+    def _grade_key(self, student_id: int, grade: Dict[str, Any]) -> Optional[str]:
+        """Generate unique key for grade item."""
+        subj = grade.get("subject") or {}
+        if isinstance(subj, dict):
+            subject_id = subj.get("id") or subj.get("abbreviation") or subj.get("name")
+        else:
+            subject_id = str(subj)
+        value = str(grade.get("value") or "").strip()
+        date = str(grade.get("date") or grade.get("enteredAt") or "").strip()
+        if not subject_id or not value:
+            return None
+        return f"{student_id}_{subject_id}_{value}_{date}"

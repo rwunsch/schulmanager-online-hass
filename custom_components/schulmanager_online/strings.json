@@ -46,4 +46,19 @@
       }
     }
   }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Clear authentication cache",
+      "description": "Clears cached tokens and forces re-authentication on next update."
+    },
+    "refresh": {
+      "name": "Refresh data now",
+      "description": "Requests an immediate update (5-minute cooldown between manual refreshes)."
+    },
+    "clear_debug": {
+      "name": "Clear debug files",
+      "description": "Deletes debug dumps stored by the integration on the host."
+    }
+  }
 }

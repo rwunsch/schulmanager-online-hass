@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Settimane in anticipo (1-4)",
           "include_homework": "Includi calendario compiti",
-          "include_grades": "Includi voti (sperimentale)"
+          "include_exams": "Includi esami/test",
+          "include_letters": "Includi lettere/messaggi",
+          "include_grades": "Includi voti (sperimentale)",
+          "schedule_highlight": "Evidenzia modifiche orario (usa emoji)",
+          "schedule_hide_cancelled_no_highlight": "Nascondi cancellazioni quando evidenziazione disattivata"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Settimane in anticipo (1-4)",
           "include_homework": "Includi calendario compiti",
-          "include_grades": "Includi voti (sperimentale)"
+          "include_exams": "Includi esami/test",
+          "include_letters": "Includi lettere/messaggi",
+          "include_grades": "Includi voti (sperimentale)",
+          "schedule_highlight": "Evidenzia modifiche orario (usa emoji)",
+          "schedule_hide_cancelled_no_highlight": "Nascondi cancellazioni quando evidenziazione disattivata"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Svuota cache di autenticazione",
+      "description": "Cancella i token memorizzati e forza una nuova autenticazione al prossimo aggiornamento."
+    },
+    "refresh": {
+      "name": "Aggiorna dati ora",
+      "description": "Richiede un aggiornamento immediato (raffreddamento di 5 minuti tra aggiornamenti manuali)."
+    },
+    "clear_debug": {
+      "name": "Cancella file di debug",
+      "description": "Elimina i dump di debug salvati dall'integrazione sull'host."
     }
   }
 }

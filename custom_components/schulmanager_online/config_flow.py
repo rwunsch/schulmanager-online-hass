@@ -15,7 +15,9 @@ from .api import SchulmanagerAPI, SchulmanagerAPIError
 from .const import (
     CONF_LOOKAHEAD_WEEKS, 
     DEFAULT_LOOKAHEAD_WEEKS, 
-    DOMAIN
+    DOMAIN,
+    OPT_SCHEDULE_HIGHLIGHT,
+    OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +38,8 @@ STEP_OPTIONS_DATA_SCHEMA = vol.Schema(
         vol.Optional("include_exams", default=True): bool,
         vol.Optional("include_letters", default=True): bool,
         vol.Optional("include_grades", default=False): bool,
+        vol.Optional(OPT_SCHEDULE_HIGHLIGHT, default=True): bool,
+        vol.Optional(OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT, default=False): bool,
         # NOTE: Schedule timing configuration removed - API provides class hours
     }
 )
@@ -78,6 +82,7 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._data: Dict[str, Any] = {}
         self._students: list = []
+        self._multiple_accounts: list[Dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: Optional[Dict[str, Any]] = None
@@ -105,14 +110,63 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             # Store data for next step
             self._data = user_input
-            self._students = info["students"]
-            
+            self._students = info.get("students", [])
+
+            # Multi-school handling: detect multipleAccounts using a direct API probe
+            try:
+                session = async_get_clientsession(self.hass)
+                api = SchulmanagerAPI(user_input[CONF_EMAIL], user_input[CONF_PASSWORD], session)
+                # First authenticate without institution to probe
+                await api.authenticate()
+                accounts = api.get_multiple_accounts()
+                if accounts:
+                    # Save and go to select step
+                    self._multiple_accounts = accounts  # list of { id, label }
+                    return await self.async_step_select_school()
+            except Exception:  # probe failure falls through to normal flow
+                pass
+
             # Set unique ID based on email
             await self.async_set_unique_id(user_input[CONF_EMAIL])
             self._abort_if_unique_id_configured()
             
             # Show options step
             return await self.async_step_options()
+
+    async def async_step_select_school(self, user_input: Optional[Dict[str, Any]] = None) -> FlowResult:
+        """Let the user pick an institution for multi-school accounts."""
+        if not self._multiple_accounts:
+            return self.async_abort(reason="no_schools")
+
+        # Build choices mapping id -> label
+        choices = {str(acc.get("id")): acc.get("label", str(acc.get("id"))) for acc in self._multiple_accounts if isinstance(acc, dict)}
+
+        if user_input is None:
+            schema = vol.Schema({vol.Required("institution_id"): vol.In(choices)})
+            return self.async_show_form(step_id="select_school", data_schema=schema)
+
+        # Validate selection and re-auth with institutionId
+        try:
+            inst_id = int(user_input.get("institution_id"))
+        except Exception:
+            return self.async_show_form(step_id="select_school", data_schema=vol.Schema({vol.Required("institution_id"): vol.In(choices)}), errors={"base": "invalid_selection"})
+
+        # Re-authenticate with selected institution
+        session = async_get_clientsession(self.hass)
+        api = SchulmanagerAPI(self._data[CONF_EMAIL], self._data[CONF_PASSWORD], session)
+        try:
+            await api.authenticate(institution_id=inst_id)
+            # After successful auth, retrieve students to confirm
+            students = await api.get_students()
+            self._students = students
+        except Exception:
+            return self.async_show_form(step_id="select_school", data_schema=vol.Schema({vol.Required("institution_id"): vol.In(choices)}), errors={"base": "cannot_connect"})
+
+        # Persist selection in entry data
+        self._data["institution_id"] = inst_id
+
+        # Continue to options step
+        return await self.async_step_options()
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
@@ -155,7 +209,8 @@ class SchulmanagerOnlineOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        # Store entry internally; do not set self.config_entry (deprecated)
+        self._entry = config_entry
 
     async def async_step_init(
         self, user_input: Optional[Dict[str, Any]] = None
@@ -165,7 +220,7 @@ class SchulmanagerOnlineOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         # Get current options
-        current_options = self.config_entry.options
+        current_options = self._entry.options
         
         options_schema = vol.Schema(
             {
@@ -182,8 +237,20 @@ class SchulmanagerOnlineOptionsFlow(config_entries.OptionsFlow):
                     default=current_options.get("include_exams", True)
                 ): bool,
                 vol.Optional(
+                    "include_letters",
+                    default=current_options.get("include_letters", True)
+                ): bool,
+                vol.Optional(
                     "include_grades",
                     default=current_options.get("include_grades", False)
+                ): bool,
+                vol.Optional(
+                    OPT_SCHEDULE_HIGHLIGHT,
+                    default=current_options.get(OPT_SCHEDULE_HIGHLIGHT, True)
+                ): bool,
+                vol.Optional(
+                    OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT,
+                    default=current_options.get(OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT, False)
                 ): bool,
                 # NOTE: Schedule timing configuration removed - API provides class hours
             }

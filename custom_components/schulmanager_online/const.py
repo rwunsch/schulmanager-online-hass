@@ -27,7 +27,7 @@ DEFAULT_BACKOFF_FACTOR: Final = 2
 # See coordinator.py _calculate_times_for_hour() for API-based time calculation
 
 # Platforms
-PLATFORMS: Final = [Platform.SENSOR, Platform.CALENDAR]
+PLATFORMS: Final = [Platform.SENSOR, Platform.CALENDAR, Platform.BUTTON, Platform.TODO]
 
 # API Configuration
 API_BASE_URL: Final = "https://login.schulmanager-online.de"
@@ -67,6 +67,12 @@ SENSOR_EXAMS_UPCOMING: Final = "exams_upcoming"
 CALENDAR_SCHEDULE: Final = "schedule"
 CALENDAR_HOMEWORK: Final = "homework"
 CALENDAR_EXAMS: Final = "exams"
+
+# Calendar display options
+OPT_SCHEDULE_HIGHLIGHT: Final = "schedule_highlight"
+OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT: Final = "schedule_hide_cancelled_no_highlight"
+DEFAULT_SCHEDULE_HIGHLIGHT: Final = True
+DEFAULT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT: Final = False
 
 # Attributes
 ATTR_STUDENT_ID: Final = "student_id"

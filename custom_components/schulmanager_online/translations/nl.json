@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Weken vooruit (1-4)",
           "include_homework": "Huiswerk kalender opnemen",
-          "include_grades": "Cijfers opnemen (experimenteel)"
+          "include_exams": "Toetsen/examens opnemen",
+          "include_letters": "Brieven/berichten opnemen",
+          "include_grades": "Cijfers opnemen (experimenteel)",
+          "schedule_highlight": "Roosterwijzigingen markeren (emoji's gebruiken)",
+          "schedule_hide_cancelled_no_highlight": "Geannuleerde lessen verbergen wanneer markering uit staat"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Weken vooruit (1-4)",
           "include_homework": "Huiswerk kalender opnemen",
-          "include_grades": "Cijfers opnemen (experimenteel)"
+          "include_exams": "Toetsen/examens opnemen",
+          "include_letters": "Brieven/berichten opnemen",
+          "include_grades": "Cijfers opnemen (experimenteel)",
+          "schedule_highlight": "Roosterwijzigingen markeren (emoji's gebruiken)",
+          "schedule_hide_cancelled_no_highlight": "Geannuleerde lessen verbergen wanneer markering uit staat"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Authenticatiecache wissen",
+      "description": "Wist opgeslagen tokens en forceert opnieuw aanmelden bij de volgende update."
+    },
+    "refresh": {
+      "name": "Gegevens nu verversen",
+      "description": "Vraagt een onmiddellijke update aan (5 minuten afkoeltijd tussen handmatige updates)."
+    },
+    "clear_debug": {
+      "name": "Debugbestanden verwijderen",
+      "description": "Verwijdert door de integratie opgeslagen debugdumps op de host."
     }
   }
 }

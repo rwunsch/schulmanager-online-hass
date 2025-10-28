@@ -7,6 +7,11 @@ from typing import Any, Dict
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import (
+    DeviceEntryType,
+    async_get as async_get_device_registry,
+)
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SchulmanagerAPI
@@ -22,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Schulmanager Online from a config entry."""
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
+    institution_id = entry.data.get("institution_id")  # For multi-school accounts
     
     # Register custom card resources
     await _register_custom_cards(hass)
@@ -30,8 +36,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api = SchulmanagerAPI(email, password, session)
     
     try:
-        # Test authentication
-        await api.authenticate()
+        # Test authentication (with institutionId if stored)
+        await api.authenticate(institution_id=institution_id)
         students = await api.get_students()
         
         if not students:
@@ -58,11 +64,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
     
+    # Create devices: one service device and child devices per student
+    try:
+        device_registry = async_get_device_registry(hass)
+        entity_registry = er.async_get(hass)
+        service_device = device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, f"service_{entry.entry_id}")},
+            name="Schulmanager Online",
+            manufacturer="Schulmanager Online",
+            model="Portal",
+            entry_type=DeviceEntryType.SERVICE,
+        )
+        for student in students:
+            sid = student.get("id")
+            sname = f"{student.get('firstname', '')} {student.get('lastname', '')}".strip() or "Student"
+
+            # Use both new and legacy identifiers so entities/devices merge
+            ident_new = (DOMAIN, str(sid))  # used by sensors/calendars
+            ident_old = (DOMAIN, f"student_{sid}")  # legacy identifier (pre-merge)
+
+            # Create or get the unified student device with both identifiers
+            student_device = device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={ident_new, ident_old},
+                name=sname,
+                manufacturer="Schulmanager Online",
+                model="Student Schedule",
+                via_device=(DOMAIN, f"service_{entry.entry_id}"),
+            )
+
+            # Best-effort cleanup: if a separate legacy-only device exists without entities, remove it
+            try:
+                legacy_device = device_registry.async_get_device({ident_old})
+                unified_device = device_registry.async_get_device({ident_new, ident_old})
+                if legacy_device and unified_device and legacy_device.id != unified_device.id:
+                    entries = entity_registry.async_entries_for_device(
+                        legacy_device.id, include_disabled_entities=True
+                    )
+                    if not entries:
+                        device_registry.async_remove_device(legacy_device.id)
+            except Exception:  # defensive; cleanup is best-effort only
+                _LOGGER.debug("Legacy device cleanup skipped", exc_info=True)
+    except Exception:
+        _LOGGER.debug("Device registry setup failed", exc_info=True)
+
     # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Set up options update listener
     entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+    # Register services once per run
+    await _async_register_services(hass)
     
     return True
 
@@ -78,6 +132,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        hass.data[DOMAIN].pop(entry.entry_id)
+        # Unregister services if no entries left
+        if not hass.data.get(DOMAIN):
+            hass.services.async_remove(DOMAIN, "clear_cache")
+            hass.services.async_remove(DOMAIN, "refresh")
+            hass.services.async_remove(DOMAIN, "clear_debug")
+    return unload_ok
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -167,3 +233,56 @@ async def _register_custom_cards(hass: HomeAssistant) -> None:
         _LOGGER.error("Failed to register custom cards: %s", e)
         import traceback
         _LOGGER.error("Traceback: %s", traceback.format_exc())
+
+
+async def _async_register_services(hass: HomeAssistant) -> None:
+    """Register Schulmanager Online services (idempotent)."""
+    if hass.services.has_service(DOMAIN, "clear_cache"):
+        return
+
+    async def _svc_clear_cache(call):
+        for entry_id, data in hass.data.get(DOMAIN, {}).items():
+            entry = data
+            api = entry.get("api")
+            if api:
+                try:
+                    api.token = None
+                    api.token_expires = None
+                except Exception:
+                    pass
+
+    async def _svc_refresh(call):
+        # Simple cooldown via per-entry attribute on coordinator
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        for entry_id, data in hass.data.get(DOMAIN, {}).items():
+            coord = data.get("coordinator")
+            if not coord:
+                continue
+            last = getattr(coord, "_last_manual_refresh", None)
+            if last and (now - last).total_seconds() < 300:
+                continue  # 5 minutes cooldown
+            try:
+                await coord.async_request_refresh()
+                setattr(coord, "_last_manual_refresh", now)
+            except Exception:
+                _LOGGER.debug("Manual refresh failed", exc_info=True)
+
+    async def _svc_clear_debug(call):
+        from pathlib import Path
+        try:
+            debug_dir = hass.config.path("custom_components", "schulmanager_online", "debug")
+            p = Path(debug_dir)
+            if p.exists():
+                for child in p.glob("*"):
+                    try:
+                        if child.is_file():
+                            child.unlink()
+                    except Exception:
+                        pass
+        except Exception:
+            _LOGGER.debug("Clear debug failed", exc_info=True)
+
+    hass.services.async_register(DOMAIN, "clear_cache", _svc_clear_cache)
+    hass.services.async_register(DOMAIN, "refresh", _svc_refresh)
+    hass.services.async_register(DOMAIN, "clear_debug", _svc_clear_debug)

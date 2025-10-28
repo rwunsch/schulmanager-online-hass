@@ -33,9 +33,12 @@ class SchulmanagerAPI:
         self.user_data: Dict[str, Any] = {}
         self.bundle_version: Optional[str] = None
         self.bundle_version_expires: Optional[datetime] = None
+        # Multi-school support
+        self.institution_id: Optional[int] = None
+        self.multiple_accounts: Optional[List[Dict[str, Any]]] = None
 
-    async def authenticate(self) -> None:
-        """Authenticate with the API."""
+    async def authenticate(self, *, institution_id: Optional[int] = None) -> None:
+        """Authenticate with the API. Pass institution_id to select a school when required."""
         try:
             # Get salt
             salt = await self._get_salt()
@@ -44,7 +47,7 @@ class SchulmanagerAPI:
             salted_hash = self._generate_salted_hash(self.password, salt)
             
             # Login
-            await self._login(salted_hash)
+            await self._login(salted_hash, institution_id=institution_id)
             
         except Exception as e:
             _LOGGER.error("Authentication failed: %s", e)
@@ -117,14 +120,14 @@ class SchulmanagerAPI:
         except Exception as e:
             raise SchulmanagerAPIError(f"Hash generation failed: {e}") from e
 
-    async def _login(self, salted_hash: str) -> None:
+    async def _login(self, salted_hash: str, *, institution_id: Optional[int] = None) -> None:
         """Login with salted hash."""
         payload = {
             "emailOrUsername": self.email,
             "password": self.password,
             "hash": salted_hash,
             "mobileApp": False,
-            "institutionId": None
+            "institutionId": institution_id,
         }
         
         async with self.session.post(LOGIN_URL, json=payload) as response:
@@ -132,10 +135,20 @@ class SchulmanagerAPI:
                 raise SchulmanagerAPIError(f"Login failed: {response.status}")
             
             data = await response.json()
+            # Handle multi-school accounts first
+            if isinstance(data, dict) and "multipleAccounts" in data:
+                accounts = data.get("multipleAccounts") or []
+                if isinstance(accounts, list) and accounts:
+                    self.multiple_accounts = accounts  # [{ id, label }, ...]
+                    self.token = None
+                    self.user_data = {}
+                    _LOGGER.info("Multi-school account detected with %d schools", len(accounts))
+                    return
+            
             self.token = data.get("jwt") or data.get("token")  # Try both jwt and token
             
             if not self.token:
-                raise SchulmanagerAPIError("No token received")
+                raise SchulmanagerAPIError("No token received (and no multipleAccounts)")
             
             # Store user data for later use
             self.user_data = data.get("user", {})
@@ -143,7 +156,20 @@ class SchulmanagerAPI:
             # Set token expiration (1 hour from now)
             self.token_expires = datetime.now() + timedelta(hours=1)
             
+            # Persist institution id if present in response and not passed explicitly
+            if institution_id is not None:
+                self.institution_id = institution_id
+            else:
+                try:
+                    self.institution_id = int(self.user_data.get("institutionId")) if self.user_data.get("institutionId") is not None else None
+                except Exception:
+                    self.institution_id = None
+            
             _LOGGER.debug("Login successful, token expires at %s", self.token_expires)
+
+    def get_multiple_accounts(self) -> Optional[List[Dict[str, Any]]]:
+        """Return multipleAccounts list if the account has multiple schools."""
+        return self.multiple_accounts
 
     async def _ensure_authenticated(self) -> None:
         """Ensure we have a valid token."""

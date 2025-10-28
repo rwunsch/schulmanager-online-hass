@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Veckor framåt (1-4)",
           "include_homework": "Inkludera läxkalender",
-          "include_grades": "Inkludera betyg (experimentell)"
+          "include_exams": "Inkludera prov/tester",
+          "include_letters": "Inkludera brev/meddelanden",
+          "include_grades": "Inkludera betyg (experimentell)",
+          "schedule_highlight": "Markera schemaändringar (använd emojis)",
+          "schedule_hide_cancelled_no_highlight": "Dölj inställda lektioner när markering är av"
         }
       }
     },
@@ -27,6 +31,38 @@
     },
     "abort": {
       "already_configured": "Kontot är redan konfigurerat"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Schulmanager Online Alternativ",
+        "description": "Uppdatera integrationsinställningar",
+        "data": {
+          "lookahead_weeks": "Veckor framåt (1-4)",
+          "include_homework": "Inkludera läxkalender",
+          "include_exams": "Inkludera prov/tester",
+          "include_letters": "Inkludera brev/meddelanden",
+          "include_grades": "Inkludera betyg (experimentell)",
+          "schedule_highlight": "Markera schemaändringar (använd emojis)",
+          "schedule_hide_cancelled_no_highlight": "Dölj inställda lektioner när markering är av"
+        }
+      }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Rensa autentiseringscache",
+      "description": "Rensar lagrade tokens och tvingar omautentisering vid nästa uppdatering."
+    },
+    "refresh": {
+      "name": "Uppdatera data nu",
+      "description": "Begär omedelbar uppdatering (5-minuters återhämtning mellan manuella uppdateringar)."
+    },
+    "clear_debug": {
+      "name": "Radera felsökningsfiler",
+      "description": "Tar bort felsökningsdumpar sparade av integrationen på värden."
     }
   }
 }

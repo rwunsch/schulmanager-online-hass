@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Tygodnie do przodu (1-4)",
           "include_homework": "Uwzględnij kalendarz zadań domowych",
-          "include_grades": "Uwzględnij oceny (eksperymentalne)"
+          "include_exams": "Uwzględnij egzaminy/testy",
+          "include_letters": "Uwzględnij listy/wiadomości",
+          "include_grades": "Uwzględnij oceny (eksperymentalne)",
+          "schedule_highlight": "Podświetl zmiany w planie (użyj emoji)",
+          "schedule_hide_cancelled_no_highlight": "Ukryj odwołania gdy podświetlenie wyłączone"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Tygodnie do przodu (1-4)",
           "include_homework": "Uwzględnij kalendarz zadań domowych",
-          "include_grades": "Uwzględnij oceny (eksperymentalne)"
+          "include_exams": "Uwzględnij egzaminy/testy",
+          "include_letters": "Uwzględnij listy/wiadomości",
+          "include_grades": "Uwzględnij oceny (eksperymentalne)",
+          "schedule_highlight": "Podświetl zmiany w planie (użyj emoji)",
+          "schedule_hide_cancelled_no_highlight": "Ukryj odwołania gdy podświetlenie wyłączone"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Wyczyść pamięć uwierzytelniania",
+      "description": "Usuwa zapisane tokeny i wymusza ponowne logowanie przy następnej aktualizacji."
+    },
+    "refresh": {
+      "name": "Odśwież dane teraz",
+      "description": "Żąda natychmiastowej aktualizacji (5 minut przerwy między ręcznymi aktualizacjami)."
+    },
+    "clear_debug": {
+      "name": "Wyczyść pliki debugowania",
+      "description": "Usuwa zrzuty debugowania zapisane przez integrację na hoście."
     }
   }
 }

@@ -39,9 +39,27 @@
           "lookahead_weeks": "Wochen im Voraus (1-4)",
           "include_homework": "Hausaufgaben-Kalender einbeziehen",
           "include_exams": "Klassenarbeiten/Tests einbeziehen",
-          "include_grades": "Noten einbeziehen (experimentell)"
+          "include_letters": "Briefe/Nachrichten einbeziehen",
+          "include_grades": "Noten einbeziehen (experimentell)",
+          "schedule_highlight": "Stundenplanänderungen hervorheben (Emojis verwenden)",
+          "schedule_hide_cancelled_no_highlight": "Ausfälle ausblenden wenn Hervorhebung aus"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Authentifizierungs-Cache leeren",
+      "description": "Löscht gespeicherte Tokens und erzwingt eine erneute Anmeldung beim nächsten Update."
+    },
+    "refresh": {
+      "name": "Daten jetzt aktualisieren",
+      "description": "Fordert sofort eine Aktualisierung an (5 Minuten Abkühlzeit zwischen manuellen Aktualisierungen)."
+    },
+    "clear_debug": {
+      "name": "Debug-Dateien löschen",
+      "description": "Löscht von der Integration erstellte Debug-Dumps auf dem Host."
     }
   }
 }

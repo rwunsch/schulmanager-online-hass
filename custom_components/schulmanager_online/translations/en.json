@@ -15,7 +15,11 @@
         "data": {
           "lookahead_weeks": "Weeks to look ahead (1-4)",
           "include_homework": "Include homework calendar",
-          "include_grades": "Include grades (experimental)"
+          "include_exams": "Include exams/tests",
+          "include_letters": "Include letters/messages",
+          "include_grades": "Include grades (experimental)",
+          "schedule_highlight": "Highlight schedule changes (use emojis)",
+          "schedule_hide_cancelled_no_highlight": "Hide cancellations when highlight is off"
         }
       }
     },
@@ -37,9 +41,28 @@
         "data": {
           "lookahead_weeks": "Weeks to look ahead (1-4)",
           "include_homework": "Include homework calendar",
-          "include_grades": "Include grades (experimental)"
+          "include_exams": "Include exams/tests",
+          "include_letters": "Include letters/messages",
+          "include_grades": "Include grades (experimental)",
+          "schedule_highlight": "Highlight schedule changes (use emojis)",
+          "schedule_hide_cancelled_no_highlight": "Hide cancellations when highlight is off"
         }
       }
+    }
+  }
+  ,
+  "services": {
+    "clear_cache": {
+      "name": "Clear authentication cache",
+      "description": "Clears cached tokens and forces re-authentication on next update."
+    },
+    "refresh": {
+      "name": "Refresh data now",
+      "description": "Requests an immediate update (5-minute cooldown between manual refreshes)."
+    },
+    "clear_debug": {
+      "name": "Clear debug files",
+      "description": "Deletes debug dumps stored by the integration on the host."
     }
   }
 }
