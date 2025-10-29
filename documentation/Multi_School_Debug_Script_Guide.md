@@ -299,14 +299,56 @@ This is **EXPECTED** if you have access to multiple schools!
    python3 --version
    cat custom_components/schulmanager_online/manifest.json | grep version
    ```
+4. **Home Assistant diagnostics** (if integration was already added):
+   - Settings → Integrations → Schulmanager Online
+   - Click the three dots (⋮) → Download diagnostics
 
 ### How to Share:
 
-**Option 1: GitHub Issue**
-1. Go to: https://github.com/rwunsch/schulmanager-online-hass/issues
-2. Click "New Issue"
-3. Attach the `debug-dumps/` folder (drag & drop ZIP file)
-4. Paste console output in issue description
+**Option 1: GitHub Issue (RECOMMENDED)**
+
+1. **Go to**: https://github.com/rwunsch/schulmanager-online-hass/issues
+2. **Click**: "New Issue"
+3. **Title**: Use a descriptive title like:
+   - "Multi-school account - school selection not appearing"
+   - "Cannot login with multi-school account"
+   - "Authentication failed: 401 with multiple schools"
+4. **Description**: Include the following template:
+
+```markdown
+## Problem Description
+[Describe what's happening - e.g., "I have children at 2 different schools and the integration shows 'Benutzer oder Passwort falsch'"]
+
+## Multi-School Status
+- [ ] I have children at multiple schools
+- [ ] I ran the debug script: `debug_multi_school.py`
+- [ ] The script detected: [Single School / Multi-School]
+
+## Debug Files Attached
+- [ ] Console output (pasted below)
+- [ ] Files from `debug-dumps/` folder (attached as ZIP)
+- [ ] Home Assistant diagnostics (if applicable)
+
+## Console Output
+```
+[Paste the entire console output from debug_multi_school.py here]
+```
+
+## Steps to Reproduce
+1. [First step...]
+2. [Second step...]
+3. [What happens vs what should happen]
+
+## Environment
+- Home Assistant Version: [e.g., 2024.1.0]
+- Integration Version: [found in manifest.json]
+- Python Version: [from `python3 --version`]
+```
+
+5. **Attach files**:
+   - Create a ZIP file of the `debug-dumps/` folder
+   - Drag and drop it into the issue description
+   - If you have HA diagnostics, attach that too
 
 **Option 2: Discord/Forum**
 - ZIP the `debug-dumps/` folder
@@ -317,6 +359,16 @@ This is **EXPECTED** if you have access to multiple schools!
 
 ❌ Your actual password (developers NEVER need this)
 ❌ Full JWT tokens (if you accidentally captured them elsewhere)
+
+### Privacy Note:
+
+✅ **All files in `debug-dumps/` are automatically redacted**:
+- Passwords are NEVER saved
+- Tokens show only last 8 characters
+- Email addresses are masked (e.g., `u***@e***.com`)
+- Hashes are redacted
+
+✅ **Home Assistant diagnostics are also automatically redacted** by the integration.
 
 ---
 
@@ -343,6 +395,74 @@ This is **EXPECTED** if you have access to multiple schools!
 - ✅ Exams retrieval
 - ✅ Letters/messages
 - ✅ Class hours configuration
+
+---
+
+## Enabling Debug Logging in Home Assistant
+
+If you're experiencing issues with the integration in Home Assistant, enable debug logging to capture detailed information:
+
+### Step 1: Enable Debug Logging
+
+Add this to your `configuration.yaml`:
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.schulmanager_online: debug
+    custom_components.schulmanager_online.api: debug
+    custom_components.schulmanager_online.config_flow: debug
+```
+
+### Step 2: Restart Home Assistant
+
+Settings → System → Restart Home Assistant
+
+### Step 3: Reproduce the Issue
+
+Try to add the integration or perform the action that's failing.
+
+### Step 4: Download Diagnostics
+
+**Settings → Integrations → Schulmanager Online → ⋮ (three dots) → Download Diagnostics**
+
+This will create a JSON file with:
+- Configuration details
+- Multi-school detection status
+- Student information (names redacted)
+- API status
+- Last errors
+
+### Step 5: View Logs
+
+**Settings → System → Logs**
+
+Search for "schulmanager" to see debug messages like:
+- `Multi-school account detected with X schools`
+- `Re-authenticating with institution_id=...`
+- `Multi-school probe failed: ...`
+
+### Important Log Messages to Look For:
+
+**Multi-School Detection:**
+```
+DEBUG: Probing for multi-school account (institutionId=None)
+INFO: Multi-school account detected with 2 schools
+```
+
+**School Selection:**
+```
+INFO: User selected institution ID: 12345
+DEBUG: Re-authenticating with institution_id=12345
+INFO: Successfully authenticated with institution 12345, found 2 students
+```
+
+**Errors:**
+```
+WARNING: Multi-school probe failed (continuing with normal flow): [error details]
+ERROR: Re-authentication with institution_id=12345 failed: [error details]
+```
 
 ---
 

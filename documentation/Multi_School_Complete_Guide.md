@@ -86,32 +86,36 @@ POST /api/login
 
 ## Multi-School Architecture Analysis
 
-### Current Implementation ✅ CORRECT
+### NEW Implementation (v2.0+) ✅ AUTOMATIC MULTI-SCHOOL
 
-**Storage Level**: Config Entry (Account Level)
+**Storage Level**: Config Entry (Account Level) with Multiple Schools
 ```python
 entry.data = {
     "email": "wunsch@gmx.de",
     "password": "***",
-    "institution_id": 13309  # ONE per account/config entry
+    "schools": [
+        {"id": 13309, "name": "Gymnasium München"},
+        {"id": 14520, "name": "Realschule Berlin"}
+    ]
 }
 ```
 
-**Why This Is Correct**:
-1. ✅ Students do NOT have their own `institutionId` field
-2. ✅ JWT token is scoped to one `institutionId` per session
-3. ✅ API design: One login = One school
-4. ✅ Matches how Schulmanager API works
+**What Changed**:
+1. ✅ **No more school selection step** - all schools are collected automatically
+2. ✅ Students have `_institution_id` and `_institution_name` fields added
+3. ✅ Multiple API instances created (one per school) 
+4. ✅ API calls are routed to the correct school automatically
+5. ✅ **One config entry = All students from all schools**
 
 ### Supported Scenarios
 
 | Scenario | Supported? | Solution |
 |----------|-----------|----------|
-| One account, multiple children at **same** school | ✅ Yes | One config entry |
-| One account, multiple children at **different** schools | ✅ Yes | Multiple config entries (one per school) |
-| Multi-school account (returns `multipleAccounts`) | ✅ Yes | Select school in config flow, store `institutionId` |
+| One account, multiple children at **same** school | ✅ Yes | One config entry (auto-detects single school) |
+| One account, multiple children at **different** schools | ✅ Yes | **One config entry (NEW: auto-collects all schools!)** |
+| Multi-school account (returns `multipleAccounts`) | ✅ Yes | **Automatic - no user selection needed** |
 
-### Multi-School Flow (When Applicable)
+### Multi-School Flow (Automatic)
 
 **Step 1: Initial Login** (`institutionId: null`)
 ```json
@@ -121,33 +125,47 @@ GET /api/get-salt with {"institutionId": null}
 POST /api/login with {"institutionId": null, "hash": "..."}
 → Response: {
   "multipleAccounts": [
-    {"id": 123, "label": "School A"},
-    {"id": 456, "label": "School B"}
+    {"id": 13309, "label": "Gymnasium München"},
+    {"id": 14520, "label": "Realschule Berlin"}
   ]
 }
 ```
-- No JWT token yet
-- User must select a school
+- Multi-school account detected
+- **No user interaction needed - proceeding to collect from all schools**
 
-**Step 2: Re-Login** (with selected `institutionId`)
+**Step 2: Automatic Collection from All Schools**
 
-⚠️ **CRITICAL**: The salt MUST be refetched with the institution_id!
+For each school in `multipleAccounts`:
 
 ```json
-GET /api/get-salt with {"institutionId": 123}
-→ Returns institution-specific salt (DIFFERENT from step 1!)
+School 1 (Gymnasium München):
+GET /api/get-salt with {"institutionId": 13309}
+→ Returns school-specific salt
 
-POST /api/login with {"institutionId": 123, "hash": "..."}
-→ Response: {"jwt": "...", "user": {...}}
+POST /api/login with {"institutionId": 13309, "hash": "..."}
+→ Response: {"jwt": "token_school_13309", "user": {associatedParents: [...]}}
+→ Students: Alice, Bob (both get _institution_id: 13309)
+
+School 2 (Realschule Berlin):
+GET /api/get-salt with {"institutionId": 14520}
+→ Returns school-specific salt
+
+POST /api/login with {"institutionId": 14520, "hash": "..."}
+→ Response: {"jwt": "token_school_14520", "user": {associatedParents: [...]}}
+→ Students: Carol (gets _institution_id: 14520)
 ```
-- JWT token received
-- `institutionId` stored for future use
 
-**Why is this necessary?**
-The Schulmanager API generates different salts based on the `institutionId` parameter. When authenticating with a specific school, you MUST:
-1. Fetch salt WITH the institution_id
-2. Generate hash from that institution-specific salt
-3. Login with the institution_id and that hash
+**Result**:
+- One config entry created
+- Three students total (Alice, Bob, Carol)
+- Two API instances (one per school)
+- All students accessible in Home Assistant
+
+**Why is this better?**
+1. **Simpler UX** - No school selection, user just enters credentials once
+2. **Complete data** - All children from all schools in one setup
+3. **Transparent** - User sees all students with their school names
+4. **Fewer config entries** - No need to add integration multiple times
 
 Using the salt from Step 1 (fetched with `institutionId: null`) will result in a **401 Unauthorized** error.
 
@@ -339,26 +357,40 @@ def _generate_salted_hash(self, password: str, salt: str) -> str:
 - Initial login returns `multipleAccounts` response
 
 ### Test Script Available
+
+**Primary Debug Script** (Recommended):
 ```bash
-cd /home/wunsch/git/schulmanager-online-hass
+cd test-scripts
 
-# Test basic login
-python3 test-scripts/test_institution_login.py \
-  --email your@email.com \
-  --password 'your_password'
+# Test basic login - detects single vs multi-school
+python3 debug_multi_school.py --email your@email.com --password 'your_password'
 
-# Test with specific institutionId
-python3 test-scripts/test_institution_login.py \
-  --email your@email.com \
-  --password 'your_password' \
-  --institution-id 13309
+# Test with specific institutionId (for multi-school accounts)
+python3 debug_multi_school.py --email your@email.com --password 'your_password' --institution-id 13309
+
+# Full API endpoint testing
+python3 debug_multi_school.py --email your@email.com --password 'your_password' --full-test
+
+# Anonymize student names in output files
+python3 debug_multi_school.py --email your@email.com --password 'your_password' --anonymize-names
 ```
 
-**Script Shows**:
-- Whether `multipleAccounts` is returned
-- Student data structure
-- Whether students have `institutionId` field
-- Full API response for debugging
+**Script Output**:
+- Detects single vs multi-school accounts
+- Shows available schools with IDs
+- Tests authentication with specific institution
+- Validates student data structure
+- Saves redacted debug files to `test-scripts/debug-dumps/`
+- Provides clear instructions for reporting issues
+
+**Script Features**:
+- ✅ Automatic data redaction (passwords, tokens, emails)
+- ✅ Multi-school detection and guidance
+- ✅ Full API endpoint testing (with `--full-test`)
+- ✅ Student name anonymization (with `--anonymize-names`)
+- ✅ Safe to share output files with developers
+
+For detailed usage, see: [Debug Script Guide](Debug_Script_Guide.md)
 
 ### Debugging in Home Assistant
 
@@ -369,12 +401,31 @@ logger:
   logs:
     custom_components.schulmanager_online: debug
     custom_components.schulmanager_online.api: debug
+    custom_components.schulmanager_online.config_flow: debug
 ```
 
-**Look for**:
-- `Multi-school account detected with X schools` (if applicable)
-- `Login successful, token expires at...`
-- `Institution ID: 13309` in user data
+**Look for these key messages**:
+- `Probing for multi-school account (institutionId=None)` - Initial detection
+- `Multi-school account detected with X schools` - Success! School dropdown should appear
+- `Single-school account detected` - Normal flow
+- `Multi-school probe failed: ...` - **BUG**: Detection failed
+- `User selected institution ID: 12345` - School selection
+- `Re-authenticating with institution_id=12345` - Re-auth with selected school
+- `Successfully authenticated with institution 12345, found N students` - Success
+
+### Download Diagnostics (Built-in Feature)
+
+**Settings → Integrations → Schulmanager Online → ⋮ → Download Diagnostics**
+
+This provides:
+- Configuration data (auto-redacted)
+- Multi-school detection status
+- Institution ID from config
+- Student count and structure (names redacted)
+- API connection status
+- Last errors
+
+**This file is SAFE to share** - all sensitive data is automatically redacted.
 
 ---
 

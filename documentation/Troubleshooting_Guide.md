@@ -81,6 +81,97 @@ except Exception:
     salt = await response.text()
 ```
 
+### 🏫 Multi-School Problems
+
+#### Problem: "Benutzer oder Passwort falsch" with multi-school account
+
+**Symptoms:**
+- You have children at different schools
+- Integration shows "invalid_auth" error
+- You can login to Schulmanager website fine
+- After login, website asks you to select a school
+
+**Root Cause:**
+The integration may not be detecting the multi-school status and showing the school selection step.
+
+**Diagnostic Steps:**
+
+1. **Run the debug script to confirm multi-school status:**
+   ```bash
+   cd test-scripts
+   python3 debug_multi_school.py --email your@email.com --password 'YourPassword'
+   ```
+   
+   Look for output:
+   ```
+   ⚠️  MULTI-SCHOOL ACCOUNT DETECTED!
+   Found 2 schools:
+      - ID: 12345  Name: Elementary School A
+      - ID: 67890  Name: High School B
+   ```
+
+2. **If multi-school detected, test with specific school:**
+   ```bash
+   python3 debug_multi_school.py --email your@email.com --password 'YourPassword' --institution-id 12345
+   ```
+
+3. **Enable debug logging in Home Assistant:**
+   ```yaml
+   # configuration.yaml
+   logger:
+     default: warning
+     logs:
+       custom_components.schulmanager_online: debug
+       custom_components.schulmanager_online.config_flow: debug
+   ```
+
+4. **Try adding integration again and check logs:**
+   Look for these messages in Settings → System → Logs:
+   - `Probing for multi-school account (institutionId=None)`
+   - `Multi-school account detected with X schools` ← Should see this!
+   - `Multi-school probe failed: ...` ← This indicates a bug
+
+**Solution:**
+
+If the school selection dropdown **does not appear** in the integration setup:
+
+1. **Collect diagnostics:**
+   - Output from `debug_multi_school.py`
+   - Home Assistant logs (Settings → System → Logs, search "schulmanager")
+   - Download diagnostics if integration was partially set up
+
+2. **Report the issue:**
+   - Go to: https://github.com/rwunsch/schulmanager-online-hass/issues
+   - Use title: "Multi-school account - school selection not appearing"
+   - Attach all debug files from `test-scripts/debug-dumps/`
+   - Include console output and HA logs
+
+**Workaround (if available):**
+If you know your institution ID, you could potentially add it manually to `.storage/core.config_entries` but this is **NOT RECOMMENDED**. Wait for the fix instead.
+
+#### Problem: School selection dropdown appears but re-authentication fails
+
+**Symptoms:**
+- School selection dropdown appears
+- You select a school
+- Error: "cannot_connect" or similar
+
+**Solution:**
+
+1. **Enable debug logging** (see above)
+
+2. **Try again and check logs for:**
+   ```
+   ERROR: Re-authentication with institution_id=12345 failed: [details]
+   ```
+
+3. **Run debug script with that institution ID:**
+   ```bash
+   python3 debug_multi_school.py --email your@email.com --password 'YourPassword' --institution-id 12345
+   ```
+
+4. **Report with diagnostics** if the debug script succeeds but HA integration fails
+
 ### 👥 Student Data Problems
 
 #### Problem: "No students found for this account"
@@ -446,6 +537,57 @@ curl -v 'https://login.schulmanager-online.de/api/salt' \
 - [ ] Attributes correctly filled
 - [ ] Custom card loads
 - [ ] Dashboard shows data
+
+## 📊 Collecting Diagnostic Information
+
+### Method 1: Download Diagnostics (EASIEST)
+
+Home Assistant has a built-in diagnostics feature that automatically collects and redacts all necessary information:
+
+**Steps:**
+1. Go to **Settings → Integrations**
+2. Find **Schulmanager Online**
+3. Click the **three dots (⋮)** on the integration
+4. Select **Download Diagnostics**
+5. Save the JSON file
+
+**What it includes:**
+- Configuration data (passwords redacted)
+- Multi-school detection status
+- Student count and structure (names redacted)
+- API connection status
+- Token expiration
+- Last errors
+- Institution ID information
+
+**This file is SAFE to share** - all sensitive data is automatically redacted.
+
+### Method 2: Run External Debug Script
+
+For pre-installation testing or when the integration won't load:
+
+```bash
+cd test-scripts
+python3 debug_multi_school.py --email your@email.com --password 'YourPassword'
+```
+
+Outputs to: `test-scripts/debug-dumps/` (all files are automatically redacted)
+
+### Method 3: Enable Debug Logging
+
+For detailed troubleshooting:
+
+```yaml
+# configuration.yaml
+logger:
+  default: warning
+  logs:
+    custom_components.schulmanager_online: debug
+    custom_components.schulmanager_online.api: debug
+    custom_components.schulmanager_online.config_flow: debug
+```
+
+Then view logs in: **Settings → System → Logs** (search for "schulmanager")
 
 ## 🆘 Support and Help
 
