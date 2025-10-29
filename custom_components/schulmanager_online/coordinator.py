@@ -21,11 +21,11 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self, 
         hass: HomeAssistant, 
-        api: SchulmanagerAPI, 
+        api_instances: Dict[int, Any],  # Changed from single api to api_instances dict
         options: Dict[str, Any]
     ) -> None:
         """Initialize the coordinator."""
-        self.api = api
+        self.api_instances = api_instances  # Dict of {institution_id: SchulmanagerAPI}
         self.options = options
         self.students: List[Dict[str, Any]] = []
         self.previous_data: Dict[str, Any] = {}  # For change detection
@@ -39,13 +39,39 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
             update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
+    
+    def _get_api_for_student(self, student: Dict[str, Any]):
+        """Get the correct API instance for a student."""
+        institution_id = student.get("_institution_id")
+        
+        if institution_id and institution_id in self.api_instances:
+            return self.api_instances[institution_id]
+        
+        # Fallback: return first available API instance
+        if self.api_instances:
+            return next(iter(self.api_instances.values()))
+        
+        raise ValueError(f"No API instance found for student {student.get('id')}")
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Update data via library."""
         try:
             # Get students if not already cached
             if not self.students:
-                self.students = await self.api.get_students()
+                # Collect students from all API instances
+                all_students = []
+                for institution_id, api in self.api_instances.items():
+                    try:
+                        students = await api.get_students()
+                        # Ensure institution info is set
+                        for student in students:
+                            if "_institution_id" not in student:
+                                student["_institution_id"] = institution_id
+                        all_students.extend(students)
+                    except Exception as e:
+                        _LOGGER.error("Failed to get students from institution %d: %s", institution_id, e)
+                        continue
+                self.students = all_students
             
             # Get options
             weeks_ahead = self.options.get("weeks_ahead", DEFAULT_LOOKAHEAD_WEEKS)
@@ -69,14 +95,17 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     continue
                 
                 try:
+                    # Get the correct API instance for this student
+                    student_api = self._get_api_for_student(student)
+                    
                     # Get schedule and class hours
-                    schedule_data = await self.api.get_schedule(
+                    schedule_data = await student_api.get_schedule(
                         student_id, start_date, end_date
                     )
                     
                     # Get class hours configuration (for free hour detection)
                     try:
-                        class_hours_data = await self.api.get_class_hours()
+                        class_hours_data = await student_api.get_class_hours()
                         data["class_hours"] = class_hours_data
                     except Exception as e:
                         _LOGGER.warning(f"Failed to fetch class hours: {e}")
@@ -108,7 +137,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     # Get homework if enabled
                     if include_homework:
                         try:
-                            homework_data = await self.api.get_homework(student_id)
+                            homework_data = await student_api.get_homework(student_id)
                             student_data["homework"] = homework_data
                         except SchulmanagerAPIError as e:
                             _LOGGER.warning("Failed to get homework for %s: %s", student_name, e)
@@ -117,7 +146,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     # Get grades if enabled
                     if include_grades:
                         try:
-                            grades_data = await self.api.get_grades(student_id)
+                            grades_data = await student_api.get_grades(student_id)
                             student_data["grades"] = grades_data
                         except SchulmanagerAPIError as e:
                             _LOGGER.warning("Failed to get grades for %s: %s", student_name, e)
@@ -129,7 +158,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                             # Get exams for extended period (8 weeks for better coverage)
                             exam_start_date = today - timedelta(weeks=1)  # Include past week
                             exam_end_date = start_date + timedelta(weeks=8)  # Extended range
-                            exams_data = await self.api.get_exams(student_id, exam_start_date, exam_end_date)
+                            exams_data = await student_api.get_exams(student_id, exam_start_date, exam_end_date)
                             student_data["exams"] = exams_data
                         except SchulmanagerAPIError as e:
                             _LOGGER.warning("Failed to get exams for %s: %s", student_name, e)
@@ -143,15 +172,24 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     continue
 
             # Get letters (Elternbriefe) - these are account-wide, not per student
+            # Try to get letters from each school's API
             include_letters = self.options.get("include_letters", True)
             if include_letters:
-                try:
-                    letters_data = await self.api.get_letters()
-                    data["letters"] = letters_data
-                    _LOGGER.debug("Retrieved %d letters", len(letters_data.get("data", [])))
-                except SchulmanagerAPIError as e:
-                    _LOGGER.warning("Failed to get letters: %s", e)
-                    data["letters"] = {"data": []}
+                all_letters = []
+                for institution_id, api in self.api_instances.items():
+                    try:
+                        letters_data = await api.get_letters()
+                        letters_list = letters_data.get("data", [])
+                        # Add institution info to each letter to avoid duplicates
+                        for letter in letters_list:
+                            letter["_institution_id"] = institution_id
+                        all_letters.extend(letters_list)
+                    except SchulmanagerAPIError as e:
+                        _LOGGER.warning("Failed to get letters from institution %d: %s", institution_id, e)
+                        continue
+                
+                data["letters"] = {"data": all_letters}
+                _LOGGER.debug("Retrieved %d letters across all schools", len(all_letters))
 
             # Detect new homework/grades after the first successful refresh only
             try:

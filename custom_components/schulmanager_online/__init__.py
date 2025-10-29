@@ -23,42 +23,208 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
 
 
+def get_api_for_student(student: Dict[str, Any], api_instances: Dict[int, SchulmanagerAPI]) -> SchulmanagerAPI:
+    """Get the correct API instance for a student based on their institution."""
+    institution_id = student.get("_institution_id")
+    
+    if institution_id and institution_id in api_instances:
+        return api_instances[institution_id]
+    
+    # Fallback: return first available API instance
+    if api_instances:
+        return next(iter(api_instances.values()))
+    
+    raise ValueError(f"No API instance found for student {student.get('id')}")
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Schulmanager Online from a config entry."""
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
-    institution_id = entry.data.get("institution_id")  # For multi-school accounts
+    schools = entry.data.get("schools", [])
     
     # Register custom card resources
     await _register_custom_cards(hass)
     
     session = async_get_clientsession(hass)
-    api = SchulmanagerAPI(email, password, session)
+    
+    # Create API instances and collect students
+    api_instances = {}
+    all_students = []
     
     try:
-        # Test authentication (with institutionId if stored)
-        await api.authenticate(institution_id=institution_id)
-        students = await api.get_students()
-        
-        if not students:
-            _LOGGER.error("No students found for account %s", email)
-            return False
-        
-        _LOGGER.info("Found %d students for account %s", len(students), email)
+        if schools:
+            # Multi-school account: Create API instance per school
+            _LOGGER.info("Setting up multi-school account with %d schools", len(schools))
+            
+            for school in schools:
+                school_id = school.get("id")
+                school_name = school.get("name")
+                
+                if not school_id:
+                    _LOGGER.warning("Skipping school with no ID: %s", school)
+                    continue
+                
+                try:
+                    _LOGGER.info("Setting up API for school: %s (ID: %d)", school_name, school_id)
+                    
+                    # Create API instance for this school
+                    school_api = SchulmanagerAPI(email, password, session)
+                    await school_api.authenticate(institution_id=school_id)
+                    
+                    # Get students from this school
+                    school_students = await school_api.get_students()
+                    
+                    # Fetch detailed institution info for this school
+                    institution_name_short = school_name
+                    institution_city = ""
+                    institution_address = ""
+                    
+                    try:
+                        institution_data = await school_api.get_institution()
+                        raw_name = institution_data.get("name", school_name)
+                        city = institution_data.get("city", "")
+                        street = institution_data.get("street", "")
+                        zipcode = institution_data.get("zipcode", "")
+                        
+                        # Build institution_name with separator if city is in the name
+                        if city and city in raw_name:
+                            institution_name_short = raw_name.replace(city, "").strip()
+                            school_name = f"{institution_name_short} | {city}"
+                        else:
+                            school_name = raw_name
+                            institution_name_short = raw_name
+                        
+                        institution_city = city
+                        
+                        # Build full address
+                        if street and zipcode and city:
+                            institution_address = f"{street}, {zipcode} {city}"
+                        elif street and city:
+                            institution_address = f"{street}, {city}"
+                        elif city:
+                            institution_address = city
+                    except Exception as e:
+                        _LOGGER.warning("Could not fetch detailed info for school %d: %s", school_id, e)
+                    
+                    # Add institution info to each student
+                    for student in school_students:
+                        student["_institution_id"] = school_id
+                        student["_institution_name"] = school_name
+                        student["_institution_name_short"] = institution_name_short
+                        student["_institution_city"] = institution_city
+                        student["_institution_address"] = institution_address
+                        all_students.append(student)
+                    
+                    # Store API instance
+                    api_instances[school_id] = school_api
+                    
+                    _LOGGER.info("Found %d students in %s", len(school_students), school_name)
+                    
+                except Exception as e:
+                    _LOGGER.error("Failed to setup school %s (ID: %d): %s", school_name, school_id, e)
+                    # Continue with other schools even if one fails
+                    continue
+            
+            if not all_students:
+                _LOGGER.error("No students found across any schools for account %s", email)
+                return False
+                
+            _LOGGER.info("Total students found across all schools: %d", len(all_students))
+            
+        else:
+            # Single school account (legacy support)
+            _LOGGER.info("Setting up single-school account")
+            institution_id = entry.data.get("institution_id")
+            
+            api = SchulmanagerAPI(email, password, session)
+            await api.authenticate(institution_id=institution_id)
+            students = await api.get_students()
+            
+            if not students:
+                _LOGGER.error("No students found for account %s", email)
+                return False
+            
+            # Add institution info if available
+            if api.institution_id:
+                # Try to fetch institution details from API endpoint
+                institution_name = f"School {api.institution_id}"  # Fallback
+                institution_name_short = institution_name
+                institution_city = ""
+                institution_address = ""
+                
+                try:
+                    # First check if we have it in entry data (from config flow)
+                    if entry.data.get("institution_name"):
+                        institution_name = entry.data["institution_name"]
+                        institution_name_short = entry.data.get("institution_name_short", institution_name)
+                        institution_city = entry.data.get("institution_city", "")
+                        institution_address = entry.data.get("institution_address", "")
+                        _LOGGER.debug("Using institution data from config: %s", institution_name)
+                    else:
+                        # Fetch from API using the new get-institution endpoint
+                        institution_data = await api.get_institution()
+                        
+                        # Extract all institution fields
+                        raw_name = institution_data.get("name", institution_name)
+                        city = institution_data.get("city", "")
+                        street = institution_data.get("street", "")
+                        zipcode = institution_data.get("zipcode", "")
+                        
+                        # Build institution_name with separator if city is in the name
+                        if city and city in raw_name:
+                            # Remove city from the end of the name and add separator
+                            institution_name_short = raw_name.replace(city, "").strip()
+                            institution_name = f"{institution_name_short} | {city}"
+                        else:
+                            institution_name = raw_name
+                            institution_name_short = raw_name
+                        
+                        institution_city = city
+                        
+                        # Build full address
+                        if street and zipcode and city:
+                            institution_address = f"{street}, {zipcode} {city}"
+                        elif street and city:
+                            institution_address = f"{street}, {city}"
+                        elif city:
+                            institution_address = city
+                        
+                        _LOGGER.info("✅ Retrieved institution from API: %s", institution_name)
+                except Exception as e:
+                    _LOGGER.warning("Could not fetch institution details: %s (using fallback)", e)
+                
+                for student in students:
+                    student["_institution_id"] = api.institution_id
+                    student["_institution_name"] = institution_name
+                    student["_institution_name_short"] = institution_name_short
+                    student["_institution_city"] = institution_city
+                    student["_institution_address"] = institution_address
+                
+                _LOGGER.info("Added institution info: ID=%d, Name=%s", api.institution_id, institution_name)
+                api_instances[api.institution_id] = api
+            else:
+                # No institution ID - use generic key
+                _LOGGER.warning("No institution_id available for account")
+                api_instances[0] = api
+            
+            all_students = students
+            _LOGGER.info("Found %d students for account %s", len(students), email)
         
     except Exception as e:
         _LOGGER.error("Failed to authenticate or get students: %s", e)
         return False
     
-    # Create coordinator
-    coordinator = SchulmanagerDataUpdateCoordinator(hass, api, entry.options)
+    # Create coordinator with API instances
+    coordinator = SchulmanagerDataUpdateCoordinator(hass, api_instances, entry.options)
     
-    # Store coordinator and students in hass data
+    # Store coordinator, API instances, and students in hass data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
-        "api": api,
-        "students": students,
+        "api_instances": api_instances,
+        "students": all_students,
+        "schools": schools,
     }
     
     # Fetch initial data
@@ -243,11 +409,21 @@ async def _async_register_services(hass: HomeAssistant) -> None:
     async def _svc_clear_cache(call):
         for entry_id, data in hass.data.get(DOMAIN, {}).items():
             entry = data
+            # Handle both old single API and new multi-API structure
             api = entry.get("api")
+            api_instances = entry.get("api_instances", {})
+            
             if api:
                 try:
                     api.token = None
                     api.token_expires = None
+                except Exception:
+                    pass
+            
+            for school_api in api_instances.values():
+                try:
+                    school_api.token = None
+                    school_api.token_expires = None
                 except Exception:
                     pass
 

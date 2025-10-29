@@ -161,8 +161,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    students = hass.data[DOMAIN][config_entry.entry_id]["students"]
+    data = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator = data["coordinator"]
+    students = data["students"]
     
     entities = []
     
@@ -171,6 +172,13 @@ async def async_setup_entry(
         student_id = student.get("id")
         if not student_id:
             continue
+        
+        # Get institution info from student data (supports multi-school)
+        student_institution_id = student.get("_institution_id")
+        student_institution_name = student.get("_institution_name")
+        student_institution_name_short = student.get("_institution_name_short")
+        student_institution_city = student.get("_institution_city")
+        student_institution_address = student.get("_institution_address")
             
         # Schedule sensors
         for description in SENSOR_DESCRIPTIONS:
@@ -180,6 +188,11 @@ async def async_setup_entry(
                     description=description,
                     student_id=student_id,
                     student_info=student,
+                    institution_id=student_institution_id,
+                    institution_name=student_institution_name,
+                    institution_name_short=student_institution_name_short,
+                    institution_city=student_institution_city,
+                    institution_address=student_institution_address,
                 )
             )
         
@@ -192,6 +205,11 @@ async def async_setup_entry(
                         description=description,
                         student_id=student_id,
                         student_info=student,
+                        institution_id=student_institution_id,
+                        institution_name=student_institution_name,
+                        institution_name_short=student_institution_name_short,
+                        institution_city=student_institution_city,
+                        institution_address=student_institution_address,
                     )
                 )
         
@@ -204,6 +222,11 @@ async def async_setup_entry(
                         description=description,
                         student_id=student_id,
                         student_info=student,
+                        institution_id=student_institution_id,
+                        institution_name=student_institution_name,
+                        institution_name_short=student_institution_name_short,
+                        institution_city=student_institution_city,
+                        institution_address=student_institution_address,
                     )
                 )
 
@@ -241,6 +264,11 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         description: SensorEntityDescription,
         student_id: int,
         student_info: Dict[str, Any],
+        institution_id: Optional[int] = None,
+        institution_name: Optional[str] = None,
+        institution_name_short: Optional[str] = None,
+        institution_city: Optional[str] = None,
+        institution_address: Optional[str] = None,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -248,6 +276,11 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         self.entity_description = description
         self.student_id = student_id
         self.student_info = student_info
+        self.institution_id = institution_id
+        self.institution_name = institution_name
+        self.institution_name_short = institution_name_short
+        self.institution_city = institution_city
+        self.institution_address = institution_address
         
         # Generate entity ID (reversed format: sensor_type_student_name)
         student_name = f"{student_info.get('firstname', '')} {student_info.get('lastname', '')}"
@@ -329,6 +362,18 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
             ATTR_STUDENT_ID: self.student_id,
             ATTR_STUDENT_NAME: f"{self.student_info.get('firstname', '')} {self.student_info.get('lastname', '')}",
         }
+        
+        # Add institution information if available
+        if self.institution_id is not None:
+            attributes["institution_id"] = self.institution_id
+        if self.institution_name:
+            attributes["institution_name"] = self.institution_name
+        if self.institution_name_short:
+            attributes["institution_name_short"] = self.institution_name_short
+        if self.institution_city:
+            attributes["institution_city"] = self.institution_city
+        if self.institution_address:
+            attributes["institution_address"] = self.institution_address
 
         # NOTE: schedule_config removed - timing now comes from API class_hours data
 

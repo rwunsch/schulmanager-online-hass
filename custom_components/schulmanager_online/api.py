@@ -174,13 +174,13 @@ class SchulmanagerAPI:
     async def _ensure_authenticated(self) -> None:
         """Ensure we have a valid token."""
         if not self.token or not self.token_expires:
-            await self.authenticate()
+            await self.authenticate(institution_id=self.institution_id)
             return
         
         # Check if token is about to expire (refresh 5 minutes early)
         if datetime.now() >= (self.token_expires - timedelta(minutes=5)):
             _LOGGER.debug("Token expiring soon, refreshing...")
-            await self.authenticate()
+            await self.authenticate(institution_id=self.institution_id)
 
     async def _detect_bundle_version(self) -> str:
         """
@@ -493,6 +493,66 @@ class SchulmanagerAPI:
         except Exception as e:
             _LOGGER.error("Failed to get students: %s", e)
             raise SchulmanagerAPIError(f"Failed to get students: {e}") from e
+
+    async def get_institution(self) -> Dict[str, Any]:
+        """Get institution/school details including name, address, etc.
+        
+        Returns a dict with institution information:
+        {
+            "id": 13309,
+            "name": "Moritz-Fontaine-Gesamtschule Rheda-Wiedenbrück",
+            "street": "Fürst-Bentheim-Straße 55",
+            "zipcode": "33378",
+            "city": "Rheda-Wiedenbrück",
+            "website": "www.mfg.nrw",
+            "email": "sekretariat@gesamtschule-rh-wd.de",
+            "phone": "...",
+            "fax": "...",
+            "region": "DE-NW",
+            "schoolTypes": ["Gesamtschule"],
+            "timeZone": "Europe/Berlin"
+        }
+        """
+        await self._ensure_authenticated()
+        
+        try:
+            _LOGGER.debug("Fetching institution details...")
+            
+            # Use the main/get-institution endpoint (most reliable)
+            result = await self._make_api_call([{
+                "moduleName": "main",
+                "endpointName": "get-institution",
+                "parameters": {}
+            }])
+            
+            results = result.get("results", [])
+            if not results:
+                raise SchulmanagerAPIError("No results returned from get-institution endpoint")
+            
+            first_result = results[0]
+            if not isinstance(first_result, dict):
+                raise SchulmanagerAPIError(f"Unexpected result format: {type(first_result)}")
+            
+            # Check for successful status
+            status = first_result.get("status", 0)
+            if status != 200:
+                raise SchulmanagerAPIError(f"get-institution returned status {status}")
+            
+            institution_data = first_result.get("data", {})
+            if not institution_data:
+                raise SchulmanagerAPIError("No institution data in response")
+            
+            _LOGGER.debug("✅ Institution details retrieved: %s (ID: %s)", 
+                         institution_data.get("name"), 
+                         institution_data.get("id"))
+            
+            return institution_data
+            
+        except SchulmanagerAPIError:
+            raise
+        except Exception as e:
+            _LOGGER.error("Failed to get institution details: %s", e)
+            raise SchulmanagerAPIError(f"Failed to get institution details: {e}") from e
 
     async def get_schedule(
         self, 
@@ -819,4 +879,4 @@ class SchulmanagerAPI:
 
     async def refresh_token(self) -> None:
         """Refresh the authentication token."""
-        await self.authenticate()
+        await self.authenticate(institution_id=self.institution_id)

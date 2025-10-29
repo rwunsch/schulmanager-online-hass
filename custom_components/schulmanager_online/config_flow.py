@@ -54,15 +54,160 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
         # Test authentication
         await api.authenticate()
         
-        # Get students to validate account
+        # Check if this is a multi-school account
+        multiple_accounts = api.get_multiple_accounts()
+        if multiple_accounts:
+            # Multi-school account detected - collect students from ALL schools
+            _LOGGER.info("Multi-school account detected with %d schools", len(multiple_accounts))
+            
+            all_students = []
+            schools = []
+            
+            # Iterate over all schools and collect students
+            for school in multiple_accounts:
+                school_id = school.get("id")
+                school_name = school.get("label", f"School {school_id}")
+                
+                if not school_id:
+                    _LOGGER.warning("Skipping school with no ID: %s", school)
+                    continue
+                
+                try:
+                    _LOGGER.info("Collecting students from school: %s (ID: %d)", school_name, school_id)
+                    
+                    # Create new API instance for this school
+                    school_api = SchulmanagerAPI(data[CONF_EMAIL], data[CONF_PASSWORD], session)
+                    await school_api.authenticate(institution_id=school_id)
+                    
+                    # Get students from this school
+                    school_students = await school_api.get_students()
+                    
+                    _LOGGER.info("Found %d students in %s", len(school_students), school_name)
+                    
+                    # Fetch detailed institution info for this school
+                    institution_name_short = school_name
+                    institution_city = ""
+                    institution_address = ""
+                    
+                    try:
+                        institution_data = await school_api.get_institution()
+                        raw_name = institution_data.get("name", school_name)
+                        city = institution_data.get("city", "")
+                        street = institution_data.get("street", "")
+                        zipcode = institution_data.get("zipcode", "")
+                        
+                        # Build institution_name with separator if city is in the name
+                        if city and city in raw_name:
+                            institution_name_short = raw_name.replace(city, "").strip()
+                            school_name = f"{institution_name_short} | {city}"
+                        else:
+                            school_name = raw_name
+                            institution_name_short = raw_name
+                        
+                        institution_city = city
+                        
+                        # Build full address
+                        if street and zipcode and city:
+                            institution_address = f"{street}, {zipcode} {city}"
+                        elif street and city:
+                            institution_address = f"{street}, {city}"
+                        elif city:
+                            institution_address = city
+                    except Exception as e:
+                        _LOGGER.warning("Could not fetch detailed info for school %d: %s", school_id, e)
+                    
+                    # Add institution info to each student
+                    for student in school_students:
+                        student["_institution_id"] = school_id
+                        student["_institution_name"] = school_name
+                        student["_institution_name_short"] = institution_name_short
+                        student["_institution_city"] = institution_city
+                        student["_institution_address"] = institution_address
+                        all_students.append(student)
+                    
+                    # Store school info
+                    schools.append({
+                        "id": school_id,
+                        "name": school_name
+                    })
+                    
+                except Exception as e:
+                    _LOGGER.error("Failed to get students from school %s (ID: %d): %s", 
+                                school_name, school_id, e)
+                    # Continue with other schools even if one fails
+                    continue
+            
+            if not all_students:
+                raise SchulmanagerAPIError("No students found across any schools for this account")
+            
+            _LOGGER.info("Total students collected from all schools: %d", len(all_students))
+            
+            return {
+                "title": f"Schulmanager ({data[CONF_EMAIL]})",
+                "students": all_students,
+                "schools": schools,
+                "multi_school": True,
+            }
+        
+        # Single school account - get students to validate
         students = await api.get_students()
         
         if not students:
             raise SchulmanagerAPIError("No students found for this account")
         
+        # For single-school accounts, fetch institution details from API
+        institution_name = f"School {api.institution_id}"  # Fallback
+        institution_name_short = institution_name
+        institution_city = ""
+        institution_address = ""
+        
+        if api.institution_id:
+            try:
+                # Fetch full institution details using the get-institution endpoint
+                institution_data = await api.get_institution()
+                
+                # Extract all institution fields
+                raw_name = institution_data.get("name", institution_name)
+                city = institution_data.get("city", "")
+                street = institution_data.get("street", "")
+                zipcode = institution_data.get("zipcode", "")
+                
+                # Build institution_name with separator if city is in the name
+                if city and city in raw_name:
+                    # Remove city from the end of the name and add separator
+                    institution_name_short = raw_name.replace(city, "").strip()
+                    institution_name = f"{institution_name_short} | {city}"
+                else:
+                    institution_name = raw_name
+                    institution_name_short = raw_name
+                
+                institution_city = city
+                
+                # Build full address
+                if street and zipcode and city:
+                    institution_address = f"{street}, {zipcode} {city}"
+                elif street and city:
+                    institution_address = f"{street}, {city}"
+                elif city:
+                    institution_address = city
+                
+                _LOGGER.info("✅ Retrieved institution: %s", institution_name)
+            except Exception as e:
+                _LOGGER.warning("Could not fetch institution details: %s (using fallback)", e)
+            
+            # Add institution info to each student
+            for student in students:
+                student["_institution_id"] = api.institution_id
+                student["_institution_name"] = institution_name
+                student["_institution_name_short"] = institution_name_short
+                student["_institution_city"] = institution_city
+                student["_institution_address"] = institution_address
+        
         return {
             "title": f"Schulmanager ({data[CONF_EMAIL]})",
             "students": students,
+            "schools": [{"id": api.institution_id, "name": institution_name}] if api.institution_id else [],
+            "multi_school": False,
         }
         
     except SchulmanagerAPIError as e:
@@ -82,7 +227,7 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._data: Dict[str, Any] = {}
         self._students: list = []
-        self._multiple_accounts: list[Dict[str, Any]] = []
+        self._schools: list[Dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: Optional[Dict[str, Any]] = None
@@ -104,27 +249,32 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "no_students"
             else:
                 errors["base"] = "cannot_connect"
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception")
-            errors["base"] = "unknown"
+        except Exception as e:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception during config flow: %s", str(e))
+            # Provide more helpful error messages for common cases
+            if "timeout" in str(e).lower():
+                errors["base"] = "timeout"
+            elif "json" in str(e).lower() or "decode" in str(e).lower():
+                errors["base"] = "invalid_response"
+            else:
+                errors["base"] = "unknown"
+                # Log the exception type to help debugging
+                _LOGGER.error("Exception type: %s", type(e).__name__)
         else:
             # Store data for next step
             self._data = user_input
             self._students = info.get("students", [])
-
-            # Multi-school handling: detect multipleAccounts using a direct API probe
-            try:
-                session = async_get_clientsession(self.hass)
-                api = SchulmanagerAPI(user_input[CONF_EMAIL], user_input[CONF_PASSWORD], session)
-                # First authenticate without institution to probe
-                await api.authenticate()
-                accounts = api.get_multiple_accounts()
-                if accounts:
-                    # Save and go to select step
-                    self._multiple_accounts = accounts  # list of { id, label }
-                    return await self.async_step_select_school()
-            except Exception:  # probe failure falls through to normal flow
-                pass
+            self._schools = info.get("schools", [])
+            
+            # Store schools data in config entry data
+            if self._schools:
+                self._data["schools"] = self._schools
+                _LOGGER.info("Storing %d school(s) in config entry", len(self._schools))
+            
+            # Log multi-school info
+            if info.get("multi_school", False):
+                _LOGGER.info("Multi-school account setup completed with %d students from %d schools", 
+                            len(self._students), len(self._schools))
 
             # Set unique ID based on email
             await self.async_set_unique_id(user_input[CONF_EMAIL])
@@ -132,42 +282,8 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             
             # Show options step
             return await self.async_step_options()
-
-    async def async_step_select_school(self, user_input: Optional[Dict[str, Any]] = None) -> FlowResult:
-        """Let the user pick an institution for multi-school accounts."""
-        if not self._multiple_accounts:
-            return self.async_abort(reason="no_schools")
-
-        # Build choices mapping id -> label
-        choices = {str(acc.get("id")): acc.get("label", str(acc.get("id"))) for acc in self._multiple_accounts if isinstance(acc, dict)}
-
-        if user_input is None:
-            schema = vol.Schema({vol.Required("institution_id"): vol.In(choices)})
-            return self.async_show_form(step_id="select_school", data_schema=schema)
-
-        # Validate selection and re-auth with institutionId
-        try:
-            inst_id = int(user_input.get("institution_id"))
-        except Exception:
-            return self.async_show_form(step_id="select_school", data_schema=vol.Schema({vol.Required("institution_id"): vol.In(choices)}), errors={"base": "invalid_selection"})
-
-        # Re-authenticate with selected institution
-        session = async_get_clientsession(self.hass)
-        api = SchulmanagerAPI(self._data[CONF_EMAIL], self._data[CONF_PASSWORD], session)
-        try:
-            await api.authenticate(institution_id=inst_id)
-            # After successful auth, retrieve students to confirm
-            students = await api.get_students()
-            self._students = students
-        except Exception:
-            return self.async_show_form(step_id="select_school", data_schema=vol.Schema({vol.Required("institution_id"): vol.In(choices)}), errors={"base": "cannot_connect"})
-
-        # Persist selection in entry data
-        self._data["institution_id"] = inst_id
-
-        # Continue to options step
-        return await self.async_step_options()
-
+        
+        # If there were errors, show the form again
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
@@ -177,14 +293,21 @@ class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle the options step."""
         if user_input is None:
+            # Build student list with school names for multi-school accounts
+            student_list = []
+            for s in self._students:
+                name = f"{s.get('firstname', '')} {s.get('lastname', '')}"
+                school = s.get('_institution_name')
+                if school:
+                    student_list.append(f"{name} ({school})")
+                else:
+                    student_list.append(name)
+            
             return self.async_show_form(
                 step_id="options", 
                 data_schema=STEP_OPTIONS_DATA_SCHEMA,
                 description_placeholders={
-                    "students": ", ".join([
-                        f"{s.get('firstname', '')} {s.get('lastname', '')}" 
-                        for s in self._students
-                    ])
+                    "students": ", ".join(student_list)
                 }
             )
 

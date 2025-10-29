@@ -19,16 +19,28 @@
           "include_letters": "Include letters/messages",
           "include_grades": "Include grades (experimental)"
         }
+      },
+      "select_school": {
+        "title": "Select School",
+        "description": "Your account has access to multiple schools. Please select which school you want to monitor with this integration.\n\nTo monitor multiple schools, add the integration again with the same credentials and select a different school.",
+        "data": {
+          "institution_id": "School"
+        }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to Schulmanager Online",
       "invalid_auth": "Invalid email or password",
       "no_students": "No students found for this account",
-      "unknown": "Unexpected error occurred"
+      "timeout": "Connection timeout - please try again",
+      "invalid_response": "Received invalid response from server",
+      "invalid_selection": "Invalid school selection",
+      "no_schools": "No schools available for selection",
+      "unknown": "Unexpected error occurred - check logs for details"
     },
     "abort": {
-      "already_configured": "Account is already configured"
+      "already_configured": "Account is already configured",
+      "no_schools": "No schools available for this account"
     }
   },
   "options": {
