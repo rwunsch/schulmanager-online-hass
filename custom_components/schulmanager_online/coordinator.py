@@ -241,6 +241,11 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     class_hour_num = int(class_hour_num)
                 except (ValueError, TypeError):
                     class_hour_num = None
+
+            
+            # Safely extract subject and room (handle None values)
+            subject_data = actual_lesson.get("subject", {}) or {}
+            room_data = actual_lesson.get("room", {}) or {}
             
             processed = {
                 "id": actual_lesson.get("lessonId", lesson.get("id")),
@@ -248,11 +253,11 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                 "class_hour_number": class_hour_num,
                 "start_time": class_hour.get("from"),
                 "end_time": class_hour.get("until"),
-                "subject": actual_lesson.get("subject", {}).get("name", ""),
-                "subject_name": actual_lesson.get("subject", {}).get("name", ""),
-                "subject_abbreviation": actual_lesson.get("subject", {}).get("abbreviation", ""),
-                "room": actual_lesson.get("room", {}).get("name", ""),
-                "teachers": actual_lesson.get("teachers", []),
+                "subject": subject_data.get("name", ""),
+                "subject_name": subject_data.get("name", ""),
+                "subject_abbreviation": subject_data.get("abbreviation", ""),
+                "room": room_data.get("name", ""),
+                "teachers": actual_lesson.get("teachers", []) or [],
                 "is_substitution": lesson.get("type") == "substitution",
                 "type": lesson.get("type", "regularLesson"),
                 "comment": lesson.get("comment", ""),
@@ -296,6 +301,8 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             
         except Exception as e:
             _LOGGER.warning("Failed to process lesson: %s", e)
+            import traceback
+            _LOGGER.debug(traceback.format_exc())
             return None
 
     def _get_next_lesson(self, lessons: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:

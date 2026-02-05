@@ -1,0 +1,11 @@
+clear_cache:
+  name: Clear API Cache
+  description: Clears the cached API tokens for all configured schools/API instances
+
+refresh:
+  name: Refresh Data
+  description: Manually trigger a data refresh from the Schulmanager API. Limited to once per 5 minutes to prevent throttling.
+
+clear_debug:
+  name: Clear Debug Files
+  description: Clears all debug dump files from the integration's debug directory
