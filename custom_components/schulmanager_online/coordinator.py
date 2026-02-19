@@ -194,7 +194,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             # Detect new homework/grades after the first successful refresh only
             try:
                 if self._initial_refresh_done:
-                    self._detect_and_fire_events(data)
+                    await self._detect_and_fire_events(data)
                 else:
                     # Seed seen sets but do not fire on initial load
                     self._seed_seen_sets(data)
@@ -226,7 +226,6 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         
         return processed_lessons
 
-
     def _process_lesson(self, lesson: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Process a single lesson."""
         try:
@@ -241,6 +240,11 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     class_hour_num = int(class_hour_num)
                 except (ValueError, TypeError):
                     class_hour_num = None
+
+            
+            # Safely extract subject and room (handle None values)
+            subject_data = actual_lesson.get("subject", {}) or {}
+            room_data = actual_lesson.get("room", {}) or {}
             
             processed = {
                 "id": actual_lesson.get("lessonId", lesson.get("id")),
@@ -248,11 +252,11 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                 "class_hour_number": class_hour_num,
                 "start_time": class_hour.get("from"),
                 "end_time": class_hour.get("until"),
-                "subject": actual_lesson.get("subject", {}).get("name", ""),
-                "subject_name": actual_lesson.get("subject", {}).get("name", ""),
-                "subject_abbreviation": actual_lesson.get("subject", {}).get("abbreviation", ""),
-                "room": actual_lesson.get("room", {}).get("name", ""),
-                "teachers": actual_lesson.get("teachers", []),
+                "subject": subject_data.get("name", ""),
+                "subject_name": subject_data.get("name", ""),
+                "subject_abbreviation": subject_data.get("abbreviation", ""),
+                "room": room_data.get("name", ""),
+                "teachers": actual_lesson.get("teachers", []) or [],
                 "is_substitution": lesson.get("type") == "substitution",
                 "type": lesson.get("type", "regularLesson"),
                 "comment": lesson.get("comment", ""),
@@ -296,6 +300,8 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             
         except Exception as e:
             _LOGGER.warning("Failed to process lesson: %s", e)
+            import traceback
+            _LOGGER.debug(traceback.format_exc())
             return None
 
     def _get_next_lesson(self, lessons: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -346,8 +352,6 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
     def get_all_students(self) -> List[Dict[str, Any]]:
         """Get all students."""
         return self.students
-
-    # NOTE: _get_schedule_config() removed - timing now comes from API class_hours data
 
     def _enhance_lesson_with_calculated_times(self, lesson: Dict[str, Any]) -> Dict[str, Any]:
         """Enhance lesson with calculated times and hour numbers if missing."""
@@ -421,7 +425,6 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         }
         return default_times.get(str(hour_number), ("08:00:00", "08:45:00"))
         
-
     def _assign_correct_hour_numbers(self, lessons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Ensure lessons have correct times based on their API-provided period numbers."""
         # The API already provides correct class_hour_number in classHour.number
@@ -662,7 +665,7 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                 if key:
                     self._seen_grades.add(key)
 
-    def _detect_and_fire_events(self, data: Dict[str, Any]) -> None:
+    async def _detect_and_fire_events(self, data: Dict[str, Any]) -> None:
         """Detect new homework and grades and fire Home Assistant events."""
         # Build student name lookup
         student_names = {}

@@ -253,10 +253,7 @@ def get_today_lessons_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]
 def get_tomorrow_lessons_count(student_data: Dict[str, Any]) -> str:
     """Get count of tomorrow's lessons."""
     tomorrow_lessons = student_data.get("tomorrow_lessons", [])
-    if not tomorrow_lessons:
-        return "No lessons tomorrow"
-    
-    return format_lesson_summary(tomorrow_lessons, include_free_hours=False)
+    return str(len(tomorrow_lessons))
 
 
 def get_tomorrow_lessons_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
