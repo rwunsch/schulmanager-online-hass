@@ -20,6 +20,14 @@ class SchulmanagerAPIError(Exception):
     """Exception raised for API errors."""
 
 
+class SchulmanagerModuleUnavailableError(SchulmanagerAPIError):
+    """Raised when the API answers a module request with status 403.
+
+    This happens when the school has not enabled the module (e.g. no
+    timetable in Schulmanager) or the account has no access to it.
+    """
+
+
 class SchulmanagerAPI:
     """API client for Schulmanager Online."""
 
@@ -462,6 +470,20 @@ class SchulmanagerAPI:
                 _LOGGER.error("❌ Raw response text: %s", response_text)
                 raise SchulmanagerAPIError(f"Invalid JSON in response: {e}")
 
+    @staticmethod
+    def _check_module_status(result: Dict[str, Any], label: str) -> None:
+        """Raise if a single request inside an API call was rejected.
+
+        The batch call itself returns HTTP 200; every request in it carries
+        its own status. 403 means the module is not enabled for the account.
+        """
+        status = result.get("status") if isinstance(result, dict) else None
+        if status == 403:
+            _LOGGER.debug("%s module not available (status 403): %s", label, result)
+            raise SchulmanagerModuleUnavailableError(f"{label} API error: {status}")
+        if status is not None and status != 200:
+            raise SchulmanagerAPIError(f"{label} API error: {status}")
+
     async def get_students(self) -> List[Dict[str, Any]]:
         """Get list of students (children) from user data."""
         await self._ensure_authenticated()
@@ -603,7 +625,11 @@ class SchulmanagerAPI:
             status = schedule_data.get("status")
             
             _LOGGER.debug("Schedule API response status: %s", status)
-            
+
+            if status == 403:
+                _LOGGER.debug("Schedule module not available (status 403): %s", schedule_data)
+                raise SchulmanagerModuleUnavailableError(f"Schedule API error: {status}")
+
             if status != 200:
                 _LOGGER.error("❌ Schedule API returned status %s", status)
                 _LOGGER.debug("Full schedule response: %s", schedule_data)
@@ -617,7 +643,9 @@ class SchulmanagerAPI:
             
             # Return data in the format expected by the coordinator
             return {"lessons": lessons}
-            
+
+        except SchulmanagerModuleUnavailableError:
+            raise
         except Exception as e:
             _LOGGER.error("❌ Failed to get schedule for student %d: %s", student_id, e)
             _LOGGER.debug("Schedule request details - Student: %d, Start: %s, End: %s", 
@@ -664,12 +692,15 @@ class SchulmanagerAPI:
                 raise SchulmanagerAPIError("No homework response")
             
             homework_data = responses[0]
+            self._check_module_status(homework_data, "Homework")
             homeworks = homework_data.get("homeworks", homework_data.get("data", []))
-            
+
             _LOGGER.debug("Found %d homework assignments for student %d", len(homeworks), student_id)
-            
+
             return homework_data
-            
+
+        except SchulmanagerModuleUnavailableError:
+            raise
         except Exception as e:
             _LOGGER.error("Failed to get homework for student %d: %s", student_id, e)
             raise SchulmanagerAPIError(f"Failed to get homework: {e}") from e
@@ -745,12 +776,15 @@ class SchulmanagerAPI:
                 raise SchulmanagerAPIError("No exams response")
             
             exams_data = responses[0]
+            self._check_module_status(exams_data, "Exams")
             exams = exams_data.get("exams", exams_data.get("data", []))
-            
+
             _LOGGER.debug("Found %d exams for student %d", len(exams), student_id)
-            
+
             return exams_data
-            
+
+        except SchulmanagerModuleUnavailableError:
+            raise
         except Exception as e:
             _LOGGER.error("Failed to get exams for student %d: %s", student_id, e)
             raise SchulmanagerAPIError(f"Failed to get exams: {e}") from e

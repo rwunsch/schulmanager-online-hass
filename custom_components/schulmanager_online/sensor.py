@@ -34,6 +34,9 @@ from .const import (
     ICON_PLAY_CIRCLE,
     ICON_SCHOOL,
     ICON_SWAP_HORIZONTAL,
+    MODULE_EXAMS,
+    MODULE_HOMEWORK,
+    MODULE_SCHEDULE,
     SENSOR_CHANGES_DETECTED,
     SENSOR_CURRENT_LESSON,
     SENSOR_HOMEWORK_DUE_TODAY,
@@ -180,8 +183,13 @@ async def async_setup_entry(
         student_institution_city = student.get("_institution_city")
         student_institution_address = student.get("_institution_address")
             
-        # Schedule sensors
-        for description in SENSOR_DESCRIPTIONS:
+        # Schedule sensors (skipped if the school has not enabled the timetable)
+        schedule_descriptions = (
+            SENSOR_DESCRIPTIONS
+            if coordinator.is_module_available(student_id, MODULE_SCHEDULE)
+            else []
+        )
+        for description in schedule_descriptions:
             entities.append(
                 SchulmanagerOnlineSensor(
                     coordinator=coordinator,
@@ -195,9 +203,11 @@ async def async_setup_entry(
                     institution_address=student_institution_address,
                 )
             )
-        
-        # Homework sensors (if enabled)
-        if config_entry.options.get("include_homework", True):
+
+        # Homework sensors (if enabled and available)
+        if config_entry.options.get("include_homework", True) and coordinator.is_module_available(
+            student_id, MODULE_HOMEWORK
+        ):
             for description in HOMEWORK_SENSOR_DESCRIPTIONS:
                 entities.append(
                     SchulmanagerOnlineSensor(
@@ -213,8 +223,10 @@ async def async_setup_entry(
                     )
                 )
         
-        # Exam sensors (if enabled)
-        if config_entry.options.get("include_exams", True):
+        # Exam sensors (if enabled and available)
+        if config_entry.options.get("include_exams", True) and coordinator.is_module_available(
+            student_id, MODULE_EXAMS
+        ):
             for description in EXAM_SENSOR_DESCRIPTIONS:
                 entities.append(
                     SchulmanagerOnlineSensor(

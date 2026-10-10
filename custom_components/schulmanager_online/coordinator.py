@@ -8,8 +8,15 @@ from typing import Any, Dict, List, Optional
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import SchulmanagerAPI, SchulmanagerAPIError
-from .const import DEFAULT_LOOKAHEAD_WEEKS, DOMAIN, UPDATE_INTERVAL
+from .api import SchulmanagerAPI, SchulmanagerAPIError, SchulmanagerModuleUnavailableError
+from .const import (
+    DEFAULT_LOOKAHEAD_WEEKS,
+    DOMAIN,
+    MODULE_EXAMS,
+    MODULE_HOMEWORK,
+    MODULE_SCHEDULE,
+    UPDATE_INTERVAL,
+)
 from .free_hours_utils import add_free_hours_to_schedule, parse_time_to_minutes, format_minutes_to_time
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,7 +39,10 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
         self._initial_refresh_done = False
         self._seen_homework: set = set()
         self._seen_grades: set = set()
-        
+        # Modules the school has not enabled, per student ({student_id: {module, ...}}).
+        # Filled when the API answers with 403; reset when the integration reloads.
+        self._unavailable_modules: Dict[Any, set] = {}
+
         super().__init__(
             hass,
             _LOGGER,
@@ -52,6 +62,24 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
             return next(iter(self.api_instances.values()))
         
         raise ValueError(f"No API instance found for student {student.get('id')}")
+
+    def is_module_available(self, student_id: Any, module: str) -> bool:
+        """Return False if the school has not enabled a module for this student."""
+        return module not in self._unavailable_modules.get(student_id, set())
+
+    def _mark_module_unavailable(self, student_id: Any, student_name: str, module: str) -> None:
+        """Remember that a module is not enabled and log it once."""
+        modules = self._unavailable_modules.setdefault(student_id, set())
+        if module in modules:
+            return
+        modules.add(module)
+        _LOGGER.warning(
+            "Schulmanager module '%s' is not available for %s (API status 403). "
+            "It is skipped and its entities are not created. Reload the integration "
+            "if the school enables it later.",
+            module,
+            student_name.strip(),
+        )
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Update data via library."""
@@ -98,27 +126,40 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
                     # Get the correct API instance for this student
                     student_api = self._get_api_for_student(student)
                     
-                    # Get schedule and class hours
-                    schedule_data = await student_api.get_schedule(
-                        student_id, start_date, end_date
-                    )
-                    
-                    # Get class hours configuration (for free hour detection)
-                    try:
-                        class_hours_data = await student_api.get_class_hours()
-                        data["class_hours"] = class_hours_data
-                    except Exception as e:
-                        _LOGGER.warning(f"Failed to fetch class hours: {e}")
-                        data["class_hours"] = []
-                    
-                    # Process regular schedule data
-                    processed_schedule = self._process_schedule_data(schedule_data)
-                    
-                    # Add free hours using centralized utility
-                    processed_schedule = add_free_hours_to_schedule(
-                        processed_schedule, data.get("class_hours", []), start_date, end_date
-                    )
-                    
+                    # Get schedule and class hours. A failing schedule must not
+                    # block homework and exams, so its errors are handled here.
+                    processed_schedule: List[Dict[str, Any]] = []
+                    if self.is_module_available(student_id, MODULE_SCHEDULE):
+                        try:
+                            schedule_data = await student_api.get_schedule(
+                                student_id, start_date, end_date
+                            )
+
+                            # Get class hours configuration (for free hour detection)
+                            try:
+                                class_hours_data = await student_api.get_class_hours()
+                                data["class_hours"] = class_hours_data
+                            except Exception as e:
+                                _LOGGER.warning(f"Failed to fetch class hours: {e}")
+                                data["class_hours"] = []
+
+                            # Process regular schedule data
+                            processed_schedule = self._process_schedule_data(schedule_data)
+
+                            # Add free hours using centralized utility
+                            processed_schedule = add_free_hours_to_schedule(
+                                processed_schedule, data.get("class_hours", []), start_date, end_date
+                            )
+                        except SchulmanagerModuleUnavailableError:
+                            self._mark_module_unavailable(student_id, student_name, MODULE_SCHEDULE)
+                        except SchulmanagerAPIError as e:
+                            # Temporary error: keep the last known schedule and class hours
+                            _LOGGER.warning("Failed to get schedule for %s: %s", student_name, e)
+                            previous_student_data = self.get_student_data(student_id) or {}
+                            processed_schedule = previous_student_data.get("schedule", [])
+                            if self.data and "class_hours" in self.data:
+                                data.setdefault("class_hours", self.data["class_hours"])
+
                     student_data = {
                         "info": student,
                         "schedule": processed_schedule,
@@ -136,12 +177,15 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
 
                     # Get homework if enabled
                     if include_homework:
-                        try:
-                            homework_data = await student_api.get_homework(student_id)
-                            student_data["homework"] = homework_data
-                        except SchulmanagerAPIError as e:
-                            _LOGGER.warning("Failed to get homework for %s: %s", student_name, e)
-                            student_data["homework"] = {"homeworks": []}
+                        student_data["homework"] = {"homeworks": []}
+                        if self.is_module_available(student_id, MODULE_HOMEWORK):
+                            try:
+                                homework_data = await student_api.get_homework(student_id)
+                                student_data["homework"] = homework_data
+                            except SchulmanagerModuleUnavailableError:
+                                self._mark_module_unavailable(student_id, student_name, MODULE_HOMEWORK)
+                            except SchulmanagerAPIError as e:
+                                _LOGGER.warning("Failed to get homework for %s: %s", student_name, e)
 
                     # Get grades if enabled
                     if include_grades:
@@ -154,15 +198,18 @@ class SchulmanagerDataUpdateCoordinator(DataUpdateCoordinator):
 
                     # Get exams if enabled
                     if include_exams:
-                        try:
-                            # Get exams for extended period (8 weeks for better coverage)
-                            exam_start_date = today - timedelta(weeks=1)  # Include past week
-                            exam_end_date = start_date + timedelta(weeks=8)  # Extended range
-                            exams_data = await student_api.get_exams(student_id, exam_start_date, exam_end_date)
-                            student_data["exams"] = exams_data
-                        except SchulmanagerAPIError as e:
-                            _LOGGER.warning("Failed to get exams for %s: %s", student_name, e)
-                            student_data["exams"] = {"exams": []}
+                        student_data["exams"] = {"exams": []}
+                        if self.is_module_available(student_id, MODULE_EXAMS):
+                            try:
+                                # Get exams for extended period (8 weeks for better coverage)
+                                exam_start_date = today - timedelta(weeks=1)  # Include past week
+                                exam_end_date = start_date + timedelta(weeks=8)  # Extended range
+                                exams_data = await student_api.get_exams(student_id, exam_start_date, exam_end_date)
+                                student_data["exams"] = exams_data
+                            except SchulmanagerModuleUnavailableError:
+                                self._mark_module_unavailable(student_id, student_name, MODULE_EXAMS)
+                            except SchulmanagerAPIError as e:
+                                _LOGGER.warning("Failed to get exams for %s: %s", student_name, e)
 
                     data["students"][student_id] = student_data
 

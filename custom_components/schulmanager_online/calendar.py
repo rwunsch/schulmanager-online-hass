@@ -14,6 +14,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN,
+    MODULE_EXAMS,
+    MODULE_HOMEWORK,
+    MODULE_SCHEDULE,
     OPT_SCHEDULE_HIGHLIGHT,
     OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT,
 )
@@ -55,18 +58,21 @@ async def async_setup_entry(
         student_id = student["id"]
         student_name = f"{student.get('firstname', '')} {student.get('lastname', '')}".strip()
         
-        # Create schedule calendar
-        entities.append(
-            SchulmanagerOnlineCalendar(
-                coordinator=coordinator,
-                student_id=student_id,
-                student_name=student_name,
-                calendar_type="schedule",
+        # Create schedule calendar (skipped if the school has not enabled the timetable)
+        if coordinator.is_module_available(student_id, MODULE_SCHEDULE):
+            entities.append(
+                SchulmanagerOnlineCalendar(
+                    coordinator=coordinator,
+                    student_id=student_id,
+                    student_name=student_name,
+                    calendar_type="schedule",
+                )
             )
-        )
-        
-        # Create homework calendar if enabled
-        if coordinator.options.get("include_homework", True):
+
+        # Create homework calendar if enabled and available
+        if coordinator.options.get("include_homework", True) and coordinator.is_module_available(
+            student_id, MODULE_HOMEWORK
+        ):
             entities.append(
                 SchulmanagerOnlineCalendar(
                     coordinator=coordinator,
@@ -76,8 +82,10 @@ async def async_setup_entry(
                 )
             )
         
-        # Create exams calendar if enabled
-        if coordinator.options.get("include_exams", True):
+        # Create exams calendar if enabled and available
+        if coordinator.options.get("include_exams", True) and coordinator.is_module_available(
+            student_id, MODULE_EXAMS
+        ):
             entities.append(
                 SchulmanagerOnlineCalendar(
                     coordinator=coordinator,

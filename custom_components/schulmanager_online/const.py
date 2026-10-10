@@ -68,6 +68,13 @@ CALENDAR_SCHEDULE: Final = "schedule"
 CALENDAR_HOMEWORK: Final = "homework"
 CALENDAR_EXAMS: Final = "exams"
 
+# Schulmanager modules a school may not have enabled for an account.
+# If the API answers with status 403 for one of them, the coordinator
+# stops requesting it and no entities are created for it.
+MODULE_SCHEDULE: Final = "schedule"
+MODULE_HOMEWORK: Final = "homework"
+MODULE_EXAMS: Final = "exams"
+
 # Calendar display options
 OPT_SCHEDULE_HIGHLIGHT: Final = "schedule_highlight"
 OPT_SCHEDULE_HIDE_CANCELLED_NO_HIGHLIGHT: Final = "schedule_hide_cancelled_no_highlight"
