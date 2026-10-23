@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import (
-    DeviceEntryType,
     async_get as async_get_device_registry,
 )
 from homeassistant.helpers import entity_registry as er
@@ -17,24 +15,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import SchulmanagerAPI
 from .const import CONF_EMAIL, CONF_PASSWORD, DOMAIN
 from .coordinator import SchulmanagerDataUpdateCoordinator
+from .institution_utils import build_institution_display_info
+from .devices import async_register_devices
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
-
-
-def get_api_for_student(student: Dict[str, Any], api_instances: Dict[int, SchulmanagerAPI]) -> SchulmanagerAPI:
-    """Get the correct API instance for a student based on their institution."""
-    institution_id = student.get("_institution_id")
-    
-    if institution_id and institution_id in api_instances:
-        return api_instances[institution_id]
-    
-    # Fallback: return first available API instance
-    if api_instances:
-        return next(iter(api_instances.values()))
-    
-    raise ValueError(f"No API instance found for student {student.get('id')}")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -74,38 +60,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     
                     # Get students from this school
                     school_students = await school_api.get_students()
-                    
-                    # Fetch detailed institution info for this school
-                    institution_name_short = school_name
-                    institution_city = ""
-                    institution_address = ""
-                    
-                    try:
-                        institution_data = await school_api.get_institution()
-                        raw_name = institution_data.get("name", school_name)
-                        city = institution_data.get("city", "")
-                        street = institution_data.get("street", "")
-                        zipcode = institution_data.get("zipcode", "")
-                        
-                        # Build institution_name with separator if city is in the name
-                        if city and city in raw_name:
-                            institution_name_short = raw_name.replace(city, "").strip()
-                            school_name = f"{institution_name_short} | {city}"
-                        else:
-                            school_name = raw_name
-                            institution_name_short = raw_name
-                        
-                        institution_city = city
-                        
-                        # Build full address
-                        if street and zipcode and city:
-                            institution_address = f"{street}, {zipcode} {city}"
-                        elif street and city:
-                            institution_address = f"{street}, {city}"
-                        elif city:
-                            institution_address = city
-                    except Exception as e:
-                        _LOGGER.warning("Could not fetch detailed info for school %d: %s", school_id, e)
+
+                    # Institution display info was resolved once during the config
+                    # flow and cached in entry.data; reuse it instead of hitting
+                    # get-institution again on every Home Assistant start. Older
+                    # entries created before this caching existed fall back to
+                    # fetching it live.
+                    institution_name_short = school.get("name_short", school_name)
+                    institution_city = school.get("city", "")
+                    institution_address = school.get("address", "")
+
+                    if not school.get("name_short"):
+                        try:
+                            institution_data = await school_api.get_institution()
+                            info = build_institution_display_info(institution_data, school_name)
+                            school_name = info.name
+                            institution_name_short = info.name_short
+                            institution_city = info.city
+                            institution_address = info.address
+                        except Exception as e:
+                            _LOGGER.warning("Could not fetch detailed info for school %d: %s", school_id, e)
                     
                     # Add institution info to each student
                     for student in school_students:
@@ -164,32 +138,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     else:
                         # Fetch from API using the new get-institution endpoint
                         institution_data = await api.get_institution()
-                        
-                        # Extract all institution fields
-                        raw_name = institution_data.get("name", institution_name)
-                        city = institution_data.get("city", "")
-                        street = institution_data.get("street", "")
-                        zipcode = institution_data.get("zipcode", "")
-                        
-                        # Build institution_name with separator if city is in the name
-                        if city and city in raw_name:
-                            # Remove city from the end of the name and add separator
-                            institution_name_short = raw_name.replace(city, "").strip()
-                            institution_name = f"{institution_name_short} | {city}"
-                        else:
-                            institution_name = raw_name
-                            institution_name_short = raw_name
-                        
-                        institution_city = city
-                        
-                        # Build full address
-                        if street and zipcode and city:
-                            institution_address = f"{street}, {zipcode} {city}"
-                        elif street and city:
-                            institution_address = f"{street}, {city}"
-                        elif city:
-                            institution_address = city
-                        
+                        info = build_institution_display_info(institution_data, institution_name)
+                        institution_name = info.name
+                        institution_name_short = info.name_short
+                        institution_city = info.city
+                        institution_address = info.address
+
                         _LOGGER.info("✅ Retrieved institution from API: %s", institution_name)
                 except Exception as e:
                     _LOGGER.warning("Could not fetch institution details: %s (using fallback)", e)
@@ -230,50 +184,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
     
-    # Create devices: one service device and child devices per student
-    try:
-        device_registry = async_get_device_registry(hass)
-        entity_registry = er.async_get(hass)
-        service_device = device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, f"service_{entry.entry_id}")},
-            name="Schulmanager Online",
-            manufacturer="Schulmanager Online",
-            model="Portal",
-            entry_type=DeviceEntryType.SERVICE,
-        )
-        for student in students:
-            sid = student.get("id")
-            sname = f"{student.get('firstname', '')} {student.get('lastname', '')}".strip() or "Student"
-
-            # Use both new and legacy identifiers so entities/devices merge
-            ident_new = (DOMAIN, str(sid))  # used by sensors/calendars
-            ident_old = (DOMAIN, f"student_{sid}")  # legacy identifier (pre-merge)
-
-            # Create or get the unified student device with both identifiers
-            student_device = device_registry.async_get_or_create(
-                config_entry_id=entry.entry_id,
-                identifiers={ident_new, ident_old},
-                name=sname,
-                manufacturer="Schulmanager Online",
-                model="Student Schedule",
-                via_device=(DOMAIN, f"service_{entry.entry_id}"),
-            )
-
-            # Best-effort cleanup: if a separate legacy-only device exists without entities, remove it
-            try:
-                legacy_device = device_registry.async_get_device({ident_old})
-                unified_device = device_registry.async_get_device({ident_new, ident_old})
-                if legacy_device and unified_device and legacy_device.id != unified_device.id:
-                    entries = entity_registry.async_entries_for_device(
-                        legacy_device.id, include_disabled_entities=True
-                    )
-                    if not entries:
-                        device_registry.async_remove_device(legacy_device.id)
-            except Exception:  # defensive; cleanup is best-effort only
-                _LOGGER.debug("Legacy device cleanup skipped", exc_info=True)
-    except Exception:
-        _LOGGER.debug("Device registry setup failed", exc_info=True)
+    # Register before platforms so their existing identifiers resolve in this entry.
+    async_register_devices(async_get_device_registry(hass), entry.entry_id, all_students)
 
     # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -285,14 +197,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_services(hass)
     
     return True
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
-    
-    return unload_ok
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -316,13 +220,90 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     """Migrate old entry."""
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
-    if config_entry.version == 1:
-        # Migration from version 1 to 2
-        # Add any necessary data migrations here
-        config_entry.version = 2
+    if config_entry.version < 2:
+        # Migration from version 1 to 2 (no data changes required)
+        hass.config_entries.async_update_entry(config_entry, version=2)
+
+    if config_entry.version < 3:
+        # Version 3: sensor/calendar unique_ids switched from being keyed by
+        # the student's (possibly colliding, possibly changing) display name
+        # to the stable student_id. Rewrite existing registry entries in
+        # place so entity history/customizations survive the upgrade.
+        await _async_migrate_unique_ids_to_student_id(hass, config_entry)
+        hass.config_entries.async_update_entry(config_entry, version=3)
 
     _LOGGER.info("Migration to version %s successful", config_entry.version)
     return True
+
+
+async def _async_migrate_unique_ids_to_student_id(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Rewrite name-based sensor/calendar unique_ids to student-id-based ones."""
+    try:
+        session = async_get_clientsession(hass)
+        email = config_entry.data.get(CONF_EMAIL)
+        password = config_entry.data.get(CONF_PASSWORD)
+        schools = config_entry.data.get("schools", [])
+
+        if not email or not password:
+            _LOGGER.warning("Skipping unique_id migration: missing credentials")
+            return
+
+        students: list = []
+        school_ids = [s.get("id") for s in schools if s.get("id")] or [
+            config_entry.data.get("institution_id")
+        ]
+
+        for school_id in school_ids:
+            try:
+                api = SchulmanagerAPI(email, password, session)
+                await api.authenticate(institution_id=school_id)
+                students.extend(await api.get_students())
+            except Exception as e:
+                _LOGGER.warning(
+                    "Skipping unique_id migration for school %s: %s", school_id, e
+                )
+
+        if not students:
+            _LOGGER.warning("Unique_id migration skipped: no students resolved")
+            return
+
+        entity_registry = er.async_get(hass)
+        entries = er.async_entries_for_config_entry(entity_registry, config_entry.entry_id)
+
+        for student in students:
+            student_id = student.get("id")
+            if not student_id:
+                continue
+
+            name = f"{student.get('firstname', '')} {student.get('lastname', '')}"
+            safe_name = name.lower().replace(" ", "_").replace("-", "_")
+            safe_name = "".join(c for c in safe_name if c.isalnum() or c == "_")
+            if not safe_name:
+                continue
+
+            old_suffix = f"_{safe_name}"
+            for entity in entries:
+                if not entity.unique_id.endswith(old_suffix):
+                    continue
+                new_unique_id = f"{entity.unique_id[: -len(old_suffix)]}_{student_id}"
+                if new_unique_id == entity.unique_id:
+                    continue
+                _LOGGER.info(
+                    "Migrating %s unique_id '%s' -> '%s'",
+                    entity.entity_id, entity.unique_id, new_unique_id,
+                )
+                try:
+                    entity_registry.async_update_entity(
+                        entity.entity_id, new_unique_id=new_unique_id
+                    )
+                except Exception as e:
+                    _LOGGER.warning(
+                        "Could not migrate unique_id for %s: %s", entity.entity_id, e
+                    )
+    except Exception:
+        _LOGGER.exception("Unique_id migration to student_id-based scheme failed")
 
 
 async def _register_custom_cards(hass: HomeAssistant) -> None:
@@ -408,18 +389,8 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 
     async def _svc_clear_cache(call):
         for entry_id, data in hass.data.get(DOMAIN, {}).items():
-            entry = data
-            # Handle both old single API and new multi-API structure
-            api = entry.get("api")
-            api_instances = entry.get("api_instances", {})
-            
-            if api:
-                try:
-                    api.token = None
-                    api.token_expires = None
-                except Exception:
-                    pass
-            
+            api_instances = data.get("api_instances", {})
+
             for school_api in api_instances.values():
                 try:
                     school_api.token = None

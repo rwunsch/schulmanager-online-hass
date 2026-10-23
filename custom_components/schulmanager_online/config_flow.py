@@ -12,6 +12,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import SchulmanagerAPI, SchulmanagerAPIError
+from .institution_utils import build_institution_display_info
 from .const import (
     CONF_LOOKAHEAD_WEEKS, 
     DEFAULT_LOOKAHEAD_WEEKS, 
@@ -88,34 +89,17 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
                     institution_name_short = school_name
                     institution_city = ""
                     institution_address = ""
-                    
+
                     try:
                         institution_data = await school_api.get_institution()
-                        raw_name = institution_data.get("name", school_name)
-                        city = institution_data.get("city", "")
-                        street = institution_data.get("street", "")
-                        zipcode = institution_data.get("zipcode", "")
-                        
-                        # Build institution_name with separator if city is in the name
-                        if city and city in raw_name:
-                            institution_name_short = raw_name.replace(city, "").strip()
-                            school_name = f"{institution_name_short} | {city}"
-                        else:
-                            school_name = raw_name
-                            institution_name_short = raw_name
-                        
-                        institution_city = city
-                        
-                        # Build full address
-                        if street and zipcode and city:
-                            institution_address = f"{street}, {zipcode} {city}"
-                        elif street and city:
-                            institution_address = f"{street}, {city}"
-                        elif city:
-                            institution_address = city
+                        info = build_institution_display_info(institution_data, school_name)
+                        school_name = info.name
+                        institution_name_short = info.name_short
+                        institution_city = info.city
+                        institution_address = info.address
                     except Exception as e:
                         _LOGGER.warning("Could not fetch detailed info for school %d: %s", school_id, e)
-                    
+
                     # Add institution info to each student
                     for student in school_students:
                         student["_institution_id"] = school_id
@@ -124,11 +108,15 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
                         student["_institution_city"] = institution_city
                         student["_institution_address"] = institution_address
                         all_students.append(student)
-                    
-                    # Store school info
+
+                    # Store school info (cached so async_setup_entry doesn't need to
+                    # re-authenticate and re-fetch institution details on every start)
                     schools.append({
                         "id": school_id,
-                        "name": school_name
+                        "name": school_name,
+                        "name_short": institution_name_short,
+                        "city": institution_city,
+                        "address": institution_address,
                     })
                     
                 except Exception as e:
@@ -165,36 +153,16 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
             try:
                 # Fetch full institution details using the get-institution endpoint
                 institution_data = await api.get_institution()
-                
-                # Extract all institution fields
-                raw_name = institution_data.get("name", institution_name)
-                city = institution_data.get("city", "")
-                street = institution_data.get("street", "")
-                zipcode = institution_data.get("zipcode", "")
-                
-                # Build institution_name with separator if city is in the name
-                if city and city in raw_name:
-                    # Remove city from the end of the name and add separator
-                    institution_name_short = raw_name.replace(city, "").strip()
-                    institution_name = f"{institution_name_short} | {city}"
-                else:
-                    institution_name = raw_name
-                    institution_name_short = raw_name
-                
-                institution_city = city
-                
-                # Build full address
-                if street and zipcode and city:
-                    institution_address = f"{street}, {zipcode} {city}"
-                elif street and city:
-                    institution_address = f"{street}, {city}"
-                elif city:
-                    institution_address = city
-                
+                info = build_institution_display_info(institution_data, institution_name)
+                institution_name = info.name
+                institution_name_short = info.name_short
+                institution_city = info.city
+                institution_address = info.address
+
                 _LOGGER.info("✅ Retrieved institution: %s", institution_name)
             except Exception as e:
                 _LOGGER.warning("Could not fetch institution details: %s (using fallback)", e)
-            
+
             # Add institution info to each student
             for student in students:
                 student["_institution_id"] = api.institution_id
@@ -202,11 +170,19 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
                 student["_institution_name_short"] = institution_name_short
                 student["_institution_city"] = institution_city
                 student["_institution_address"] = institution_address
-        
+
         return {
             "title": f"Schulmanager ({data[CONF_EMAIL]})",
             "students": students,
-            "schools": [{"id": api.institution_id, "name": institution_name}] if api.institution_id else [],
+            # Cached so async_setup_entry doesn't need to re-authenticate and
+            # re-fetch institution details on every Home Assistant start.
+            "schools": [{
+                "id": api.institution_id,
+                "name": institution_name,
+                "name_short": institution_name_short,
+                "city": institution_city,
+                "address": institution_address,
+            }] if api.institution_id else [],
             "multi_school": False,
         }
         
@@ -221,7 +197,7 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
 class SchulmanagerOnlineConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Schulmanager Online."""
 
-    VERSION = 1
+    VERSION = 3
 
     def __init__(self) -> None:
         """Initialize the config flow."""

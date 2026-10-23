@@ -161,8 +161,8 @@ def add_free_hours_to_schedule(
     
     # Sort all lessons (including free hours) by date and time
     all_lessons_with_free.sort(key=lambda x: (
-        x.get("date", ""), 
-        int(x.get("class_hour_number", 0))
+        x.get("date") or "",
+        int(x.get("class_hour_number") or 0)
     ))
     
     _LOGGER.debug(f"Total lessons with free hours: {len(all_lessons_with_free)}")

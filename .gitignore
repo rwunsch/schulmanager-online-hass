@@ -44,3 +44,13 @@ test-scripts/ha-config/home-assistant_v2.db-shm
 test-scripts/ha-config/home-assistant_v2.db-wal
 test-scripts/ha-config/home-assistant.log.1
 test-scripts/ha-config/home-assistant.log.fault
+
+# Home Assistant local/runtime files
+secrets.yaml
+known_devices.yaml
+.storage/
+*.db
+*.db-shm
+*.db-wal
+home-assistant.log*
+OZW_Log.txt

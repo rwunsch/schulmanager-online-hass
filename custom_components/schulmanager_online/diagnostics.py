@@ -28,16 +28,15 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry with secrets redacted."""
     runtime = hass.data.get(entry.domain, {}).get(entry.entry_id, {})
     coord = runtime.get("coordinator")
-    api = runtime.get("api")
+    api_instances = runtime.get("api_instances", {})
     students = runtime.get("students", [])
 
     # Gather multi-school information
     multi_school_info = {
         "has_institution_id_in_config": "institution_id" in entry.data,
         "institution_id_value": entry.data.get("institution_id"),
-        "api_has_multiple_accounts": bool(getattr(api, "multiple_accounts", None)),
-        "multiple_accounts_count": len(getattr(api, "multiple_accounts", []) or []),
-        "api_institution_id": getattr(api, "institution_id", None),
+        "api_instances_count": len(api_instances),
+        "api_institution_ids": list(api_instances.keys()),
     }
     
     # Check students structure
@@ -66,10 +65,15 @@ async def async_get_config_entry_diagnostics(
             "details": student_diagnostics,
         },
         "service": {
-            "has_token": bool(getattr(api, "token", None)),
-            "token_expires": str(getattr(api, "token_expires", None)),
-            "has_bundle_version": bool(getattr(api, "bundle_version", None)),
-            "bundle_version": getattr(api, "bundle_version", None),
+            str(institution_id): {
+                "has_token": bool(getattr(api, "token", None)),
+                "token_expires": str(getattr(api, "token_expires", None)),
+                "has_bundle_version": bool(getattr(api, "bundle_version", None)),
+                "bundle_version": getattr(api, "bundle_version", None),
+                "bundle_version_source": getattr(api, "bundle_version_source", "not_detected"),
+                "last_successful_bundle_version": getattr(api, "last_successful_bundle_version", None),
+            }
+            for institution_id, api in api_instances.items()
         },
         "coordinator": {
             "last_update_success": getattr(coord, "last_update_success", None),

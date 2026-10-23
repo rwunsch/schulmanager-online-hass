@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 
 from .const import API_BASE_URL, CALLS_URL, LOGIN_URL, SALT_URL
+from .bundle import BundleDetectionError, detect_bundle_version
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class SchulmanagerAPI:
         self.user_data: Dict[str, Any] = {}
         self.bundle_version: Optional[str] = None
         self.bundle_version_expires: Optional[datetime] = None
+        self.bundle_version_source = "not_detected"
+        self.last_successful_bundle_version: Optional[str] = None
+        self._bundle_lock = asyncio.Lock()
         # Multi-school support
         self.institution_id: Optional[int] = None
         self.multiple_accounts: Optional[List[Dict[str, Any]]] = None
@@ -62,19 +66,16 @@ class SchulmanagerAPI:
         }
         
         _LOGGER.debug("🧂 Requesting salt from: %s", SALT_URL)
-        _LOGGER.debug("🧂 Salt request payload: %s", payload)
         
         async with self.session.post(SALT_URL, json=payload) as response:
             _LOGGER.debug("🧂 Salt response status: %d", response.status)
             
             if response.status != 200:
-                error_text = await response.text()
-                _LOGGER.error("❌ Salt request failed: %d - %s", response.status, error_text)
+                _LOGGER.error("Salt request failed: HTTP %d", response.status)
                 raise SchulmanagerAPIError(f"Failed to get salt: {response.status}")
             
             try:
                 data = await response.json()
-                _LOGGER.debug("🧂 Salt response JSON: %s", data)
                 # Handle both string response and object response
                 if isinstance(data, str):
                     salt = data
@@ -84,7 +85,6 @@ class SchulmanagerAPI:
                 _LOGGER.debug("🧂 Salt response not JSON, trying as text: %s", e)
                 # If JSON parsing fails, try text
                 salt = await response.text()
-                _LOGGER.debug("🧂 Salt response text: %s", salt[:50] + "..." if len(salt) > 50 else salt)
             
             if not salt:
                 _LOGGER.error("❌ No salt received in response")
@@ -183,284 +183,115 @@ class SchulmanagerAPI:
             await self.authenticate(institution_id=self.institution_id)
 
     async def _detect_bundle_version(self) -> str:
-        """
-        Detect the current bundleVersion from Schulmanager Online JavaScript files.
-        
-        The bundleVersion is embedded in the main JavaScript bundle and is required
-        for all API calls to work properly. This method fetches the main page,
-        extracts JavaScript bundle URLs, and searches for the bundleVersion.
-        
-        Returns:
-            str: The detected bundleVersion (e.g., "3505280ee7")
-            
-        Raises:
-            SchulmanagerAPIError: If bundleVersion cannot be detected
-        """
-        try:
-            _LOGGER.debug("🔍 Detecting bundleVersion from JavaScript files...")
-            
-            # Step 1: Get the main page to find JavaScript bundle URLs
-            async with self.session.get(API_BASE_URL) as response:
-                if response.status != 200:
-                    _LOGGER.warning("Failed to fetch main page for bundleVersion detection: %d", response.status)
-                    raise SchulmanagerAPIError(f"Failed to fetch main page: {response.status}")
-                
-                html_content = await response.text()
-                _LOGGER.debug("✅ Main page fetched (%d characters)", len(html_content))
-            
-            # Step 2: Extract JavaScript bundle URLs from HTML
-            js_urls = self._extract_js_urls(html_content)
-            _LOGGER.debug("📋 Found %d JavaScript files", len(js_urls))
-            
-            # Step 3: Search for bundleVersion in JavaScript files
-            for js_url in js_urls:
-                # Convert relative URLs to absolute
-                if js_url.startswith('/'):
-                    full_url = f"{API_BASE_URL}{js_url}"
-                elif js_url.startswith('http'):
-                    full_url = js_url
-                else:
-                    # Handle relative URLs like "static/main-SUJO2BNM.js"
-                    full_url = f"{API_BASE_URL}/{js_url}"
-                
-                bundle_version = await self._search_bundle_version_in_js(full_url)
-                if bundle_version:
-                    _LOGGER.info("✅ Detected bundleVersion: %s from %s", bundle_version, js_url)
-                    return bundle_version
-            
-            # Fallback: Try the known main JavaScript file directly
-            known_js_patterns = [
-                "/static/main-*.js",
-                "/assets/main-*.js",
-                "/js/main-*.js"
-            ]
-            
-            for pattern in known_js_patterns:
-                # Try to find files matching the pattern in the HTML
-                pattern_regex = pattern.replace("*", r"[A-Za-z0-9]+")
-                matches = re.findall(f'["\']({pattern_regex})["\']', html_content)
-                for match in matches:
-                    full_url = f"{API_BASE_URL}{match}"
-                    bundle_version = await self._search_bundle_version_in_js(full_url)
-                    if bundle_version:
-                        _LOGGER.info("✅ Detected bundleVersion: %s from pattern %s", bundle_version, pattern)
-                        return bundle_version
-            
-            # If all else fails, return the known working version as fallback
-            fallback_version = "3505280ee7"
-            _LOGGER.warning("⚠️  Could not detect bundleVersion, using fallback: %s", fallback_version)
-            return fallback_version
-            
-        except Exception as e:
-            # If detection fails, use fallback version
-            fallback_version = "3505280ee7"
-            _LOGGER.warning("❌ bundleVersion detection failed (%s), using fallback: %s", e, fallback_version)
-            return fallback_version
-
-    def _extract_js_urls(self, html_content: str) -> List[str]:
-        """Extract JavaScript file URLs from HTML content."""
-        js_urls = []
-        
-        # Look for script tags with src attributes
-        script_pattern = r'<script[^>]+src=["\']([^"\']+\.js[^"\']*)["\'][^>]*>'
-        matches = re.findall(script_pattern, html_content, re.IGNORECASE)
-        js_urls.extend(matches)
-        
-        # Look for module imports
-        module_pattern = r'import\(["\']([^"\']+\.js[^"\']*)["\']'
-        module_matches = re.findall(module_pattern, html_content)
-        js_urls.extend(module_matches)
-        
-        # Look for asset references
-        asset_pattern = r'["\']([/][^"\']*main[^"\']*\.js[^"\']*)["\']'
-        asset_matches = re.findall(asset_pattern, html_content)
-        js_urls.extend(asset_matches)
-        
-        # Remove duplicates and filter
-        unique_urls = list(set(js_urls))
-        _LOGGER.debug("📋 Extracted JS URLs: %s", unique_urls)
-        
-        return unique_urls
-
-    async def _search_bundle_version_in_js(self, js_url: str) -> Optional[str]:
-        """Search for bundleVersion in a JavaScript file."""
-        try:
-            _LOGGER.debug("🔍 Checking %s for bundleVersion...", js_url)
-            
-            async with self.session.get(js_url) as response:
-                if response.status != 200:
-                    _LOGGER.debug("❌ Failed to fetch %s: %d", js_url, response.status)
-                    return None
-                
-                js_content = await response.text()
-                _LOGGER.debug("📄 File size: %d characters", len(js_content))
-                
-                # Search for bundleVersion patterns
-                patterns = [
-                    r'bundleVersion["\']?\s*[:=]\s*["\']([a-f0-9]{8,})["\']',  # bundleVersion: "hash"
-                    r'["\']bundleVersion["\']?\s*[:=]\s*["\']([a-f0-9]{8,})["\']',  # "bundleVersion": "hash"
-                    r'bundleVersion\s*=\s*["\']([a-f0-9]{8,})["\']',  # bundleVersion = "hash"
-                ]
-                
-                for pattern in patterns:
-                    matches = re.findall(pattern, js_content, re.IGNORECASE)
-                    for match in matches:
-                        if self._validate_bundle_version(js_content, match):
-                            _LOGGER.debug("✅ Found valid bundleVersion: %s", match)
-                            return match
-                
-                # Fallback: Look for the known version pattern
-                known_version = "3505280ee7"
-                if known_version in js_content:
-                    _LOGGER.debug("✅ Found known bundleVersion: %s", known_version)
-                    return known_version
-                
-                # Look for any hex string that might be a bundle version
-                hex_pattern = r'["\']([a-f0-9]{10})["\']'
-                hex_matches = re.findall(hex_pattern, js_content, re.IGNORECASE)
-                for match in hex_matches:
-                    if self._validate_bundle_version(js_content, match):
-                        _LOGGER.debug("✅ Found candidate bundleVersion: %s", match)
-                        return match
-                
-                return None
-                
-        except Exception as e:
-            _LOGGER.debug("❌ Error processing %s: %s", js_url, e)
-            return None
-
-    def _validate_bundle_version(self, js_content: str, candidate: str) -> bool:
-        """Validate that the candidate appears in API-related context."""
-        # Check if the candidate appears near API-related terms
-        context_terms = [
-            'api/calls',
-            'requests',
-            'httpClient',
-            'post',
-            'axios',
-            'fetch',
-            '/api/',
-            'bundleVersion'
-        ]
-        
-        # Find the position of the candidate
-        candidate_pos = js_content.find(candidate)
-        if candidate_pos == -1:
-            return False
-        
-        # Check surrounding context (1000 chars before and after)
-        start = max(0, candidate_pos - 1000)
-        end = min(len(js_content), candidate_pos + 1000)
-        context = js_content[start:end].lower()
-        
-        # Check if any API-related terms appear in context
-        for term in context_terms:
-            if term in context:
-                _LOGGER.debug("✅ Validated bundleVersion %s: found '%s' in context", candidate, term)
-                return True
-        
-        return False
+        """Discover from the public app; raise on failure, never return a fallback."""
+        return await detect_bundle_version(self.session, API_BASE_URL + "/")
 
     async def _ensure_bundle_version(self) -> str:
-        """Ensure we have a valid bundleVersion, detecting it if necessary."""
-        # Check if we have a cached version that's still valid (cache for 1 hour)
-        if (self.bundle_version and self.bundle_version_expires and 
-            datetime.now() < self.bundle_version_expires):
-            return self.bundle_version
-        
-        # Detect new bundleVersion
-        _LOGGER.debug("🔄 Detecting/refreshing bundleVersion...")
-        self.bundle_version = await self._detect_bundle_version()
-        self.bundle_version_expires = datetime.now() + timedelta(hours=1)
-        
-        return self.bundle_version
+        """Cache discovery for one hour; retry failed discovery after five minutes.
+
+        Keep the last API-confirmed version if discovery fails, otherwise retain
+        the previous detected value or use the historical emergency fallback.
+        The source field explicitly distinguishes all three cases. This cache is
+        per API instance, in memory, and serialized to avoid duplicate discovery.
+        """
+        async with self._bundle_lock:
+            if (self.bundle_version and self.bundle_version_expires and
+                    datetime.now() < self.bundle_version_expires):
+                return self.bundle_version
+            try:
+                version = await self._detect_bundle_version()
+            except BundleDetectionError as err:
+                version = self.last_successful_bundle_version or self.bundle_version or "3505280ee7"
+                if self.last_successful_bundle_version:
+                    self.bundle_version_source = "last_api_success"
+                elif self.bundle_version:
+                    self.bundle_version_source = "previous_detection"
+                else:
+                    self.bundle_version_source = "emergency_fallback"
+                self.bundle_version_expires = datetime.now() + timedelta(minutes=5)
+                _LOGGER.warning(
+                    "bundleVersion discovery failed (%s); using %s, retry discovery in 5 minutes",
+                    err, self.bundle_version_source,
+                )
+            else:
+                self.bundle_version_source = "detected"
+                self.bundle_version_expires = datetime.now() + timedelta(hours=1)
+                _LOGGER.debug("Detected bundleVersion %s from public app", version)
+            self.bundle_version = version
+            return version
+
+    @staticmethod
+    def _response_statuses(data: Any) -> list:
+        """Read only envelope status fields, never recurse through private API data."""
+        if not isinstance(data, dict):
+            return []
+        return [item.get("status") for key in ("results", "responses")
+                if isinstance(data.get(key), list)
+                for item in data[key] if isinstance(item, dict)]
+
+    @staticmethod
+    def _version_conflict(data: Any) -> bool:
+        """Accept an explicit bundle-version rejection, not an arbitrary 4xx."""
+        if not isinstance(data, dict):
+            return False
+        envelopes = [data] + [item for key in ("results", "responses")
+                              if isinstance(data.get(key), list)
+                              for item in data[key] if isinstance(item, dict)]
+        for envelope in envelopes:
+            for key in ("code", "error", "message"):
+                value = envelope.get(key)
+                if not isinstance(value, str):
+                    continue
+                text = re.sub(r"[^a-z]", "", value.lower())
+                if "bundleversion" in text and any(
+                    word in text for word in ("invalid", "mismatch", "outdated", "expired", "unsupported")
+                ):
+                    return True
+        return False
 
     async def _make_api_call(self, requests: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Make an authenticated API call with detailed logging."""
+        """Call once, then retry at most once for auth or explicit version rejection.
+
+        HTTP and nested 401/403 share one retry budget. Logs contain status/counts
+        only: no authorization headers, student objects or server response bodies.
+        """
         await self._ensure_authenticated()
-        
-        # Get current bundleVersion (detect dynamically if needed)
-        bundle_version = await self._ensure_bundle_version()
-        
-        headers = {"Authorization": f"Bearer {self.token}"}
-        payload = {
-            "bundleVersion": bundle_version,  # Dynamically detected bundleVersion
-            "requests": requests
-        }
-        
-        # Enhanced debug logging
-        _LOGGER.debug("🌐 Making API call to: %s", CALLS_URL)
-        _LOGGER.debug("📤 Request payload: %s", payload)
-        _LOGGER.debug("📋 Request headers: %s", {k: v[:20] + "..." if k == "Authorization" else v for k, v in headers.items()})
-        
-        async with self.session.post(CALLS_URL, json=payload, headers=headers) as response:
-            _LOGGER.debug("📥 Response status: %d", response.status)
-            _LOGGER.debug("📋 Response headers: %s", dict(response.headers))
-            
-            # Get response text for detailed error analysis
-            response_text = await response.text()
-            _LOGGER.debug("📄 Response body (first 500 chars): %s", response_text[:500])
-            
-            if response.status == 401:
-                # Token might be invalid, try to re-authenticate once
-                _LOGGER.debug("🔄 Got 401, trying to re-authenticate...")
-                await self.authenticate()
-                headers = {"Authorization": f"Bearer {self.token}"}
-                
-                _LOGGER.debug("🔄 Retrying API call with new token...")
-                async with self.session.post(CALLS_URL, json=payload, headers=headers) as retry_response:
-                    retry_text = await retry_response.text()
-                    _LOGGER.debug("🔄 Retry response status: %d", retry_response.status)
-                    _LOGGER.debug("🔄 Retry response body: %s", retry_text[:500])
-                    
-                    if retry_response.status != 200:
-                        _LOGGER.error("❌ API call failed after retry: %d - %s", retry_response.status, retry_text)
-                        raise SchulmanagerAPIError(f"API call failed after retry: {retry_response.status}")
-                    
-                    try:
-                        return await retry_response.json()
-                    except Exception as e:
-                        _LOGGER.error("❌ Failed to parse retry response JSON: %s", e)
-                        raise SchulmanagerAPIError(f"Invalid JSON in retry response: {e}")
-            
-            elif response.status != 200:
-                _LOGGER.error("❌ API call failed: %d - %s", response.status, response_text)
-                
-                # Try to parse error response for more details
+        for attempt in range(2):
+            version = await self._ensure_bundle_version()
+            payload = {"bundleVersion": version, "requests": requests}
+            headers = {"Authorization": f"Bearer {self.token}"}
+            async with self.session.post(CALLS_URL, json=payload, headers=headers) as response:
+                status = response.status
                 try:
-                    error_data = await response.json()
-                    _LOGGER.error("❌ Error response JSON: %s", error_data)
-                except:
-                    _LOGGER.error("❌ Error response is not JSON: %s", response_text)
-                
-                raise SchulmanagerAPIError(f"API call failed: {response.status}")
-            
-            # Parse successful response
-            try:
-                response_data = await response.json()
-                _LOGGER.debug("✅ Successfully parsed response JSON")
-                _LOGGER.debug("📊 Response structure: %s", list(response_data.keys()) if isinstance(response_data, dict) else type(response_data))
-                
-                # Log details about responses array
-                if isinstance(response_data, dict) and "responses" in response_data:
-                    responses = response_data["responses"]
-                    _LOGGER.debug("📊 Found %d responses in response array", len(responses))
-                    for i, resp in enumerate(responses):
-                        if isinstance(resp, dict):
-                            status = resp.get("status", "unknown")
-                            data_type = type(resp.get("data", None))
-                            data_len = len(resp.get("data", [])) if isinstance(resp.get("data"), (list, dict)) else "N/A"
-                            _LOGGER.debug("📊 Response %d: status=%s, data_type=%s, data_len=%s", i, status, data_type, data_len)
-                            
-                            if status != 200:
-                                _LOGGER.error("❌ Response %d failed with status %s: %s", i, status, resp)
-                
-                return response_data
-                
-            except Exception as e:
-                _LOGGER.error("❌ Failed to parse response JSON: %s", e)
-                _LOGGER.error("❌ Raw response text: %s", response_text)
-                raise SchulmanagerAPIError(f"Invalid JSON in response: {e}")
+                    data = await response.json()
+                except (ValueError, aiohttp.ContentTypeError) as err:
+                    if status not in (401, 403):
+                        raise SchulmanagerAPIError(f"API response is not JSON (HTTP {status})") from err
+                    data = {}
+            statuses = self._response_statuses(data)
+            auth_rejected = status in (401, 403) or any(code in (401, 403) for code in statuses)
+            version_rejected = self._version_conflict(data)
+            _LOGGER.debug("API response HTTP %s, nested statuses %s", status, statuses)
+            if (auth_rejected or version_rejected) and attempt == 0:
+                _LOGGER.warning(
+                    "API rejected %s; refreshing and retrying once",
+                    "authentication" if auth_rejected else "bundleVersion",
+                )
+                # Keep last successful value available if public discovery is down.
+                self.bundle_version_expires = None
+                if auth_rejected:
+                    self.token = None
+                    self.token_expires = None
+                    await self.authenticate(institution_id=self.institution_id)
+                continue
+            if status != 200 or auth_rejected or version_rejected:
+                raise SchulmanagerAPIError(f"API request rejected (HTTP {status}, nested statuses {statuses})")
+            if not isinstance(data, dict):
+                raise SchulmanagerAPIError("API response is not an object")
+            if statuses and all(code == 200 for code in statuses):
+                self.last_successful_bundle_version = version
+            return data
+        raise SchulmanagerAPIError("API retry budget exhausted")
 
     async def get_students(self) -> List[Dict[str, Any]]:
         """Get list of students (children) from user data."""
@@ -580,7 +411,9 @@ class SchulmanagerAPI:
                 "parameters": {
                     "student": student,  # Use full student object instead of just ID
                     "start": start_date.isoformat(),
-                    "end": end_date.isoformat()
+                    "end": end_date.isoformat(),
+                    "startDate": start_date.isoformat(),
+                    "endDate": end_date.isoformat()
                 }
             }
         ]
@@ -588,11 +421,10 @@ class SchulmanagerAPI:
         try:
             _LOGGER.debug("🗓️ Requesting schedule for student %d from %s to %s", 
                          student_id, start_date, end_date)
-            _LOGGER.debug("Schedule request payload: %s", requests)
             
             response = await self._make_api_call(requests)
             results = response.get("results", [])
-            
+
             _LOGGER.debug("Schedule API response - Got %d results", len(results))
             
             if not results:
@@ -606,7 +438,6 @@ class SchulmanagerAPI:
             
             if status != 200:
                 _LOGGER.error("❌ Schedule API returned status %s", status)
-                _LOGGER.debug("Full schedule response: %s", schedule_data)
                 raise SchulmanagerAPIError(f"Schedule API error: {status}")
             
             # Extract lessons from the data field
@@ -623,28 +454,6 @@ class SchulmanagerAPI:
             _LOGGER.debug("Schedule request details - Student: %d, Start: %s, End: %s", 
                          student_id, start_date, end_date)
             raise SchulmanagerAPIError(f"Failed to get schedule: {e}") from e
-
-    async def get_class_hours(self, class_id: int) -> Dict[str, Any]:
-        """Get class hours definition."""
-        requests = [
-            {
-                "method": "schedules/get-class-hours",
-                "data": {"classId": class_id}
-            }
-        ]
-        
-        try:
-            response = await self._make_api_call(requests)
-            responses = response.get("results", [])
-            
-            if not responses:
-                raise SchulmanagerAPIError("No class hours response")
-            
-            return responses[0]
-            
-        except Exception as e:
-            _LOGGER.error("Failed to get class hours for class %d: %s", class_id, e)
-            raise SchulmanagerAPIError(f"Failed to get class hours: {e}") from e
 
     async def get_homework(self, student_id: int) -> Dict[str, Any]:
         """Get homework for a student using the classbook module."""
@@ -698,22 +507,28 @@ class SchulmanagerAPI:
 
     async def get_grades(self, student_id: int) -> Dict[str, Any]:
         """Get grades for a student."""
+        # NOTE: previously used the legacy {"method", "data"} request shape,
+        # which the backend appears to have dropped (every other endpoint has
+        # migrated to moduleName/endpointName/parameters). Aligned with the
+        # same convention used by get_homework/get_exams; not yet verified
+        # against a live account since grades is an opt-in feature.
         requests = [
             {
-                "method": "grades/get-grades",
-                "data": {"studentId": student_id}
+                "moduleName": "grades",
+                "endpointName": "get-grades",
+                "parameters": {"student": {"id": student_id}}
             }
         ]
-        
+
         try:
             response = await self._make_api_call(requests)
             responses = response.get("results", [])
-            
+
             if not responses:
                 raise SchulmanagerAPIError("No grades response")
-            
+
             grades_data = responses[0]
-            grades = grades_data.get("grades", [])
+            grades = grades_data.get("grades", grades_data.get("data", []))
             
             _LOGGER.debug("Found %d grades for student %d", len(grades), student_id)
             

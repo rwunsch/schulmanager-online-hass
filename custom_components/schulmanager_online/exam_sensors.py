@@ -5,20 +5,36 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 
-def _extract_exams(exams_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _as_dict(value: Any) -> Dict[str, Any]:
+    """Return value as a dict, treating unavailable HA states as empty."""
+    return value if isinstance(value, dict) else {}
+
+
+def _as_exam_list(value: Any) -> List[Dict[str, Any]]:
+    """Return only dict exams from a value that should be a list."""
+    if not isinstance(value, list):
+        return []
+    return [exam for exam in value if isinstance(exam, dict)]
+
+
+def _extract_exams(exams_data: Any) -> List[Dict[str, Any]]:
     """Extract exams list from API response."""
+    exams_data = _as_dict(exams_data)
+
     # Handle different data structures
     data = exams_data.get("data", [])
     if isinstance(data, list):
-        return data
+        return _as_exam_list(data)
     elif isinstance(data, dict):
-        return data.get("exams", [])
+        return _as_exam_list(data.get("exams", []))
     else:
-        return exams_data.get("exams", [])
+        return _as_exam_list(exams_data.get("exams", []))
 
 
 def _format_exam_info(exam: Dict[str, Any]) -> Dict[str, Any]:
     """Format exam data for consistent output."""
+    exam = _as_dict(exam)
+
     # Extract subject name
     subject = exam.get("subject", {})
     subject_name = subject.get("name", "Unknown") if isinstance(subject, dict) else str(subject)
@@ -59,7 +75,7 @@ def _format_exam_info(exam: Dict[str, Any]) -> Dict[str, Any]:
 
 def get_exams_today_count(student_data: Dict[str, Any]) -> str:
     """Get count of exams today."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date().isoformat()
@@ -69,7 +85,7 @@ def get_exams_today_count(student_data: Dict[str, Any]) -> str:
 
 def get_exams_today_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for exams today sensor."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date().isoformat()
@@ -84,7 +100,7 @@ def get_exams_today_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def get_exams_this_week_count(student_data: Dict[str, Any]) -> str:
     """Get count of exams this week."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date()
@@ -101,7 +117,7 @@ def get_exams_this_week_count(student_data: Dict[str, Any]) -> str:
 
 def get_exams_this_week_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for exams this week sensor."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date()
@@ -136,7 +152,7 @@ def get_exams_this_week_attributes(student_data: Dict[str, Any]) -> Dict[str, An
 
 def get_exams_next_week_count(student_data: Dict[str, Any]) -> str:
     """Get count of exams next week."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date()
@@ -153,7 +169,7 @@ def get_exams_next_week_count(student_data: Dict[str, Any]) -> str:
 
 def get_exams_next_week_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for exams next week sensor."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date()
@@ -188,7 +204,7 @@ def get_exams_next_week_attributes(student_data: Dict[str, Any]) -> Dict[str, An
 
 def get_exams_upcoming_count(student_data: Dict[str, Any]) -> str:
     """Get count of upcoming exams (next 30 days)."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date()
@@ -202,7 +218,7 @@ def get_exams_upcoming_count(student_data: Dict[str, Any]) -> str:
 
 def get_exams_upcoming_attributes(student_data: Dict[str, Any]) -> Dict[str, Any]:
     """Get attributes for upcoming exams sensor."""
-    exams_data = student_data.get("exams", {})
+    exams_data = _as_dict(student_data).get("exams", {})
     exams = _extract_exams(exams_data)
     
     today = datetime.now().date()

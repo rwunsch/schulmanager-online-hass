@@ -155,6 +155,32 @@ EXAM_SENSOR_DESCRIPTIONS = [
 ]
 
 
+def _empty_student_data(student_info: Dict[str, Any], status: str = "not_loaded") -> Dict[str, Any]:
+    """Return stable empty student data for sensor rendering."""
+    return {
+        "info": student_info,
+        "schedule": [],
+        "current_lesson": None,
+        "next_lesson": None,
+        "today_lessons": [],
+        "today_changes": [],
+        "tomorrow_lessons": [],
+        "next_school_day": [],
+        "this_week": [],
+        "next_week": [],
+        "changes_detected": {
+            "has_changes": False,
+            "changes": [],
+            "change_count": 0,
+        },
+        "homework": {"homeworks": []},
+        "grades": {"grades": []},
+        "exams": {"exams": [], "data": []},
+        "_data_status": status,
+        "_last_error": "",
+    }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -282,11 +308,12 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         self.institution_city = institution_city
         self.institution_address = institution_address
         
-        # Generate entity ID (reversed format: sensor_type_student_name)
+        # unique_id is keyed by the stable student_id (not the name, which can
+        # collide between siblings or change) - see student_utils/migration
+        # in __init__.py for entities created before this fix.
         student_name = f"{student_info.get('firstname', '')} {student_info.get('lastname', '')}"
-        safe_name = student_name.lower().replace(" ", "_").replace("-", "_")
-        
-        self._attr_unique_id = f"schulmanager_{description.key}_{safe_name}"
+
+        self._attr_unique_id = f"schulmanager_{description.key}_{student_id}"
         self._attr_name = f"{description.name} - {student_name}"
 
     @property
@@ -307,7 +334,7 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         """Return the state of the sensor."""
         student_data = self.coordinator.get_student_data(self.student_id)
         if not student_data:
-            return None
+            student_data = _empty_student_data(self.student_info)
 
         # Schedule sensors
         if self.entity_description.key == SENSOR_CURRENT_LESSON:
@@ -356,7 +383,7 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         """Return the state attributes."""
         student_data = self.coordinator.get_student_data(self.student_id)
         if not student_data:
-            return {}
+            student_data = _empty_student_data(self.student_info)
 
         attributes = {
             ATTR_STUDENT_ID: self.student_id,
@@ -381,6 +408,9 @@ class SchulmanagerOnlineSensor(CoordinatorEntity, SensorEntity):
         if "info" in student_data:
             student_info = student_data["info"]
             attributes[ATTR_CLASS_NAME] = student_info.get("classId", "")
+
+        attributes["data_status"] = student_data.get("_data_status", "loaded")
+        attributes["last_error"] = student_data.get("_last_error", "")
 
         # Schedule sensors
         if self.entity_description.key == SENSOR_CURRENT_LESSON:
